@@ -39,7 +39,6 @@ export class MdTooltip {
   set position(value: TooltipPosition) {
     if (value !== this._position) {
       this._position = value;
-      this._createOverlay();
       this._updatePosition();
     }
   }
@@ -50,6 +49,23 @@ export class MdTooltip {
     return this._message;
   }
   set message(value: string) {
+    if (this.message) {
+      let showAfterChange = false;
+      if (this.visible) {
+        this.hide();
+        showAfterChange = true;
+      }
+      setTimeout(
+        () => {
+          this._message = value;
+          this._updatePosition();
+          if (showAfterChange) {
+            this.show();
+          }
+        },
+        0
+      )
+    }
     this._message = value;
     this._updatePosition();
   }
@@ -65,7 +81,13 @@ export class MdTooltip {
    * TODO: internal
    */
   ngOnInit() {
-    this._createOverlay();
+  }
+
+  ngOnDestroy() {
+    if (this._overlayRef) {
+      this._overlayRef.dispose();
+      this._overlayRef = null;
+    }
   }
 
   /**
@@ -123,6 +145,7 @@ export class MdTooltip {
    * @param event
    */
   _handleMouseEnter(event: MouseEvent) {
+    this._createOverlay()
     this.show();
   }
 
@@ -132,6 +155,7 @@ export class MdTooltip {
    */
   _handleMouseLeave(event: MouseEvent) {
     this.hide();
+    this.ngOnDestroy();
   }
 
   /**

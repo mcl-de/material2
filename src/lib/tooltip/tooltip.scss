@@ -1,7 +1,7 @@
 @import '../core/style/variables';
 
 
-$md-tooltip-height: 22px;
+$md-tooltip-height: 14px;
 $md-tooltip-margin: 14px;
 $md-tooltip-padding: 8px;
 
@@ -16,6 +16,5 @@ $md-tooltip-padding: 8px;
   font-family: $md-font-family;
   font-size: 10px;
   margin: $md-tooltip-margin;
-  height: $md-tooltip-height;
   line-height: $md-tooltip-height;
 }
