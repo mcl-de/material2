@@ -67,8 +67,10 @@ export class MdTooltip {
         0
       )
     }
-    this._message = value;
-    this._updatePosition();
+    else {
+      this._message = value;
+      this._updatePosition();
+    }
   }
 
   private _overlayRef: OverlayRef;
