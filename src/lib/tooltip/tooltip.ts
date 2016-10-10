@@ -49,6 +49,7 @@ export class MdTooltip {
     return this._message;
   }
   set message(value: string) {
+    value = value.replace(/\r\n|\r|\n/g, '<br>');
     if (this.message) {
       let showAfterChange = false;
       if (this.visible) {
