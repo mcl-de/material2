@@ -96,17 +96,17 @@ export class MdTooltip {
   /**
    * Create the overlay config and position strategy
    */
-  private _createOverlay() {
+  private _createOverlay(wnd: Window) {
     if (this._overlayRef) {
       if (this.visible) {
         // if visible, hide before destroying
         this.hide();
-        this._createOverlay();
+        this._createOverlay(wnd);
       } else {
         // if not visible, dispose and recreate
         this._overlayRef.dispose();
         this._overlayRef = null;
-        this._createOverlay();
+        this._createOverlay(wnd);
       }
     } else {
       let origin = this._getOrigin();
@@ -114,8 +114,16 @@ export class MdTooltip {
       let strategy = this._overlay.position().connectedTo(this._elementRef, origin, position);
       let config = new OverlayState();
       config.positionStrategy = strategy;
+      this._overlayRef = this._overlay.create(config, this._createOverlayContainer(wnd));
+    }
+  }
 
-      this._overlayRef = this._overlay.create(config);
+  private _createOverlayContainer(wnd: Window) {
+    let overlayContainerElement: Element = wnd.document.body.querySelector('.md-overlay-container');
+    if (!overlayContainerElement) {
+      overlayContainerElement = wnd.document.createElement('div');
+      overlayContainerElement.classList.add('md-overlay-container');
+      wnd.document.body.appendChild(overlayContainerElement);
     }
   }
 
@@ -148,7 +156,7 @@ export class MdTooltip {
    * @param event
    */
   _handleMouseEnter(event: MouseEvent) {
-    this._createOverlay()
+    this._createOverlay(event.view);
     this.show();
   }
 
