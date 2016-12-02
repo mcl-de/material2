@@ -118,13 +118,14 @@ export class MdTooltip {
     }
   }
 
-  private _createOverlayContainer(wnd: Window) {
+  private _createOverlayContainer(wnd: Window): Element {
     let overlayContainerElement: Element = wnd.document.body.querySelector('.md-overlay-container');
     if (!overlayContainerElement) {
       overlayContainerElement = wnd.document.createElement('div');
       overlayContainerElement.classList.add('md-overlay-container');
       wnd.document.body.appendChild(overlayContainerElement);
     }
+    return overlayContainerElement;
   }
 
   /**
