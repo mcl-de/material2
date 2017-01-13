@@ -1,5 +1,4 @@
-import ElementArrayFinder = protractor.ElementArrayFinder;
-import ElementFinder = protractor.ElementFinder;
+import {browser, by, element, ElementArrayFinder, ElementFinder, Key} from 'protractor';
 
 describe('tabs', () => {
   describe('basic behavior', () => {
@@ -11,56 +10,51 @@ describe('tabs', () => {
       browser.get('/tabs');
       tabGroup = element(by.css('md-tab-group'));
       tabLabels = element.all(by.css('.md-tab-label'));
-      tabBodies = element.all(by.css('.md-tab-body'));
+      tabBodies = element.all(by.css('md-tab-body'));
     });
 
     it('should change tabs when the label is clicked', () => {
       tabLabels.get(1).click();
-      expect(getActiveStates(tabLabels)).toEqual([false, true, false]);
-      expect(getActiveStates(tabBodies)).toEqual([false, true, false]);
+      expect(getLabelActiveStates(tabLabels)).toEqual([false, true, false]);
+      expect(getBodyActiveStates(tabBodies)).toEqual([false, true, false]);
 
       tabLabels.get(0).click();
-      expect(getActiveStates(tabLabels)).toEqual([true, false, false]);
-      expect(getActiveStates(tabBodies)).toEqual([true, false, false]);
+      expect(getLabelActiveStates(tabLabels)).toEqual([true, false, false]);
+      expect(getBodyActiveStates(tabBodies)).toEqual([true, false, false]);
     });
 
     it('should change focus with keyboard interaction', () => {
       tabLabels.get(0).click();
       expect(getFocusStates(tabLabels)).toEqual([true, false, false]);
 
-      pressKey(protractor.Key.RIGHT);
+      pressKey(Key.RIGHT);
       expect(getFocusStates(tabLabels)).toEqual([false, true, false]);
 
-      pressKey(protractor.Key.RIGHT);
+      pressKey(Key.RIGHT);
       expect(getFocusStates(tabLabels)).toEqual([false, false, true]);
 
-      pressKey(protractor.Key.RIGHT);
+      pressKey(Key.RIGHT);
       expect(getFocusStates(tabLabels)).toEqual([false, false, true]);
 
-      pressKey(protractor.Key.LEFT);
+      pressKey(Key.LEFT);
       expect(getFocusStates(tabLabels)).toEqual([false, true, false]);
 
-      pressKey(protractor.Key.LEFT);
+      pressKey(Key.LEFT);
       expect(getFocusStates(tabLabels)).toEqual([true, false, false]);
 
-      pressKey(protractor.Key.LEFT);
+      pressKey(Key.LEFT);
       expect(getFocusStates(tabLabels)).toEqual([true, false, false]);
     });
   });
 });
 
-/**
- * A helper function to perform the sendKey action
- * @param key
- */
+/** A helper function to perform the sendKey action. */
 function pressKey(key: string) {
   browser.actions().sendKeys(key).perform();
 }
 
 /**
- * Returns an array of true/false that represents the focus states of the provided elements
- * @param elements
- * @returns {webdriver.promise.Promise<Promise<boolean>[]>|webdriver.promise.Promise<T[]>}
+ * Returns an array of true/false that represents the focus states of the provided elements.
  */
 function getFocusStates(elements: ElementArrayFinder) {
   return elements.map(element => {
@@ -72,21 +66,19 @@ function getFocusStates(elements: ElementArrayFinder) {
   });
 }
 
-/**
- * Returns an array of true/false that represents the active states for the provided elements
- * @param elements
- * @returns {webdriver.promise.Promise<Promise<boolean>[]>|webdriver.promise.Promise<T[]>}
- */
-function getActiveStates(elements: ElementArrayFinder) {
-  return getClassStates(elements, 'md-tab-active');
+/** Returns an array of true/false that represents the active states for the provided elements. */
+function getLabelActiveStates(elements: ElementArrayFinder) {
+  return getClassStates(elements, 'md-tab-label-active');
+}
+
+/** Returns an array of true/false that represents the active states for the provided elements */
+function getBodyActiveStates(elements: ElementArrayFinder) {
+  return getClassStates(elements, 'md-tab-body-active');
 }
 
 /**
  * Returns an array of true/false values that represents whether the provided className is on
- * each element
- * @param elements
- * @param className
- * @returns {webdriver.promise.Promise<Promise<boolean>[]>|webdriver.promise.Promise<T[]>}
+ * each element.
  */
 function getClassStates(elements: ElementArrayFinder, className: string) {
   return elements.map(element => {

@@ -5,19 +5,21 @@ import {
   ChangeDetectionStrategy,
   Input,
   ViewEncapsulation,
-  Directive
+  Directive,
+  ElementRef,
+  Renderer
 } from '@angular/core';
-import {Renderer} from '@angular/core';
-import {ElementRef} from '@angular/core';
+import {DefaultStyleCompatibilityModeModule} from '../core';
+
 
 @Directive({
-  selector: 'md-toolbar-row'
+  selector: 'md-toolbar-row, mat-toolbar-row'
 })
 export class MdToolbarRow {}
 
 @Component({
   moduleId: module.id,
-  selector: 'md-toolbar',
+  selector: 'md-toolbar, mat-toolbar',
   templateUrl: 'toolbar.html',
   styleUrls: ['toolbar.css'],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -29,6 +31,7 @@ export class MdToolbar {
 
   constructor(private elementRef: ElementRef, private renderer: Renderer) { }
 
+  /** The color of the toolbar. Can be primary, accent, or warn. */
   @Input()
   get color(): string {
     return this._color;
@@ -54,10 +57,12 @@ export class MdToolbar {
 
 
 @NgModule({
-  exports: [MdToolbar, MdToolbarRow],
+  imports: [DefaultStyleCompatibilityModeModule],
+  exports: [MdToolbar, MdToolbarRow, DefaultStyleCompatibilityModeModule],
   declarations: [MdToolbar, MdToolbarRow],
 })
 export class MdToolbarModule {
+  /** @deprecated */
   static forRoot(): ModuleWithProviders {
     return {
       ngModule: MdToolbarModule,

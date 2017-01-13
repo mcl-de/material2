@@ -1,23 +1,22 @@
 import {NgModule, ModuleWithProviders} from '@angular/core';
 import {FocusTrap} from './focus-trap';
-import {MdLiveAnnouncer} from './live-announcer';
+import {LIVE_ANNOUNCER_PROVIDER} from './live-announcer';
 import {InteractivityChecker} from './interactivity-checker';
-
-export {FocusTrap} from './focus-trap';
-export {MdLiveAnnouncer} from './live-announcer';
-export {InteractivityChecker} from './interactivity-checker';
-
-export const A11Y_PROVIDERS = [MdLiveAnnouncer, InteractivityChecker];
+import {CommonModule} from '@angular/common';
+import {PlatformModule} from '../platform/index';
 
 @NgModule({
+  imports: [CommonModule, PlatformModule],
   declarations: [FocusTrap],
   exports: [FocusTrap],
+  providers: [InteractivityChecker, LIVE_ANNOUNCER_PROVIDER]
 })
 export class A11yModule {
+  /** @deprecated */
   static forRoot(): ModuleWithProviders {
     return {
       ngModule: A11yModule,
-      providers: A11Y_PROVIDERS,
+      providers: [],
     };
   }
 }

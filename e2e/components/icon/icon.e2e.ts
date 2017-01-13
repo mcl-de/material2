@@ -1,3 +1,5 @@
+import {browser, by, element} from 'protractor';
+
 describe('icon', () => {
   describe('font icons by ligature', () => {
     let testIcon: any;
@@ -15,7 +17,8 @@ describe('icon', () => {
 
     it('should have the correct class when used', () => {
       testIcon.getAttribute('class').then((attr: string) => {
-        expect(attr).toEqual('md-24 material-icons');
+        expect(attr).toContain('md-24');
+        expect(attr).toContain('material-icons');
       });
     });
 

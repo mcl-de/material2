@@ -1,10 +1,9 @@
-import {Injectable} from '@angular/core';
-
+import {Injectable, Optional, SkipSelf} from '@angular/core';
 
 
 /**
  * Simple utility for getting the bounds of the browser viewport.
- * TODO: internal
+ * @docs-private
  */
 @Injectable()
 export class ViewportRuler {
@@ -50,13 +49,20 @@ export class ViewportRuler {
     // `scrollTop` and `scrollLeft` is inconsistent. However, using the bounding rect of
     // `document.documentElement` works consistently, where the `top` and `left` values will
     // equal negative the scroll position.
-    const top =  documentRect.top < 0 && document.body.scrollTop == 0 ?
-        -documentRect.top :
-        document.body.scrollTop;
-    const left = documentRect.left < 0 && document.body.scrollLeft == 0 ?
-        -documentRect.left :
-        document.body.scrollLeft;
+    const top = -documentRect.top || document.body.scrollTop || window.scrollY || 0;
+    const left = -documentRect.left || document.body.scrollLeft || window.scrollX || 0;
 
     return {top, left};
   }
 }
+
+export function VIEWPORT_RULER_PROVIDER_FACTORY(parentDispatcher: ViewportRuler) {
+  return parentDispatcher || new ViewportRuler();
+};
+
+export const VIEWPORT_RULER_PROVIDER = {
+  // If there is already a ViewportRuler available, use that. Otherwise, provide a new one.
+  provide: ViewportRuler,
+  deps: [[new Optional(), new SkipSelf(), ViewportRuler]],
+  useFactory: VIEWPORT_RULER_PROVIDER_FACTORY
+};

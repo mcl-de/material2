@@ -5,7 +5,7 @@ import {
   ComponentFixture,
   TestBed,
 } from '@angular/core/testing';
-import {NgControl, FormsModule} from '@angular/forms';
+import {NgControl, FormsModule, ReactiveFormsModule, FormControl} from '@angular/forms';
 import {Component, DebugElement} from '@angular/core';
 import {By} from '@angular/platform-browser';
 import {
@@ -20,12 +20,13 @@ describe('MdButtonToggle', () => {
 
   beforeEach(async(() => {
     TestBed.configureTestingModule({
-      imports: [MdButtonToggleModule.forRoot(), FormsModule],
+      imports: [MdButtonToggleModule.forRoot(), FormsModule, ReactiveFormsModule],
       declarations: [
         ButtonTogglesInsideButtonToggleGroup,
         ButtonToggleGroupWithNgModel,
         ButtonTogglesInsideButtonToggleGroupMultiple,
         ButtonToggleGroupWithInitialValue,
+        ButtonToggleGroupWithFormControl,
         StandaloneButtonToggle,
       ],
     });
@@ -124,6 +125,15 @@ describe('MdButtonToggle', () => {
 
       expect(buttonToggleInstances[0].checked).toBe(true);
       expect(groupInstance.value);
+    });
+
+    it('should change the vertical state', () => {
+      expect(groupNativeElement.classList).not.toContain('md-button-toggle-vertical');
+
+      groupInstance.vertical = true;
+      fixture.detectChanges();
+
+      expect(groupNativeElement.classList).toContain('md-button-toggle-vertical');
     });
 
     it('should emit a change event from button toggles', fakeAsync(() => {
@@ -412,6 +422,15 @@ describe('MdButtonToggle', () => {
       expect(buttonToggleInstances[0].checked).toBe(true);
     });
 
+    it('should change the vertical state', () => {
+      expect(groupNativeElement.classList).not.toContain('md-button-toggle-vertical');
+
+      groupInstance.vertical = true;
+      fixture.detectChanges();
+
+      expect(groupNativeElement.classList).toContain('md-button-toggle-vertical');
+    });
+
     it('should deselect a button toggle when selected twice', () => {
       buttonToggleNativeElements[0].click();
       fixture.detectChanges();
@@ -444,6 +463,52 @@ describe('MdButtonToggle', () => {
       expect(changeSpy).toHaveBeenCalledTimes(2);
     }));
 
+  });
+
+  describe('using FormControl', () => {
+    let fixture: ComponentFixture<ButtonToggleGroupWithFormControl>;
+    let groupDebugElement: DebugElement;
+    let groupInstance: MdButtonToggleGroup;
+    let testComponent: ButtonToggleGroupWithFormControl;
+
+    beforeEach(async(() => {
+      fixture = TestBed.createComponent(ButtonToggleGroupWithFormControl);
+      fixture.detectChanges();
+
+      testComponent = fixture.debugElement.componentInstance;
+
+      groupDebugElement = fixture.debugElement.query(By.directive(MdButtonToggleGroup));
+      groupInstance = groupDebugElement.injector.get(MdButtonToggleGroup);
+    }));
+
+    it('should toggle the disabled state', () => {
+      testComponent.control.disable();
+
+      expect(groupInstance.disabled).toBe(true);
+
+      testComponent.control.enable();
+
+      expect(groupInstance.disabled).toBe(false);
+    });
+
+    it('should set the value', () => {
+      testComponent.control.setValue('green');
+
+      expect(groupInstance.value).toBe('green');
+
+      testComponent.control.setValue('red');
+
+      expect(groupInstance.value).toBe('red');
+    });
+
+    it('should register the on change callback', () => {
+      let spy = jasmine.createSpy('onChange callback');
+
+      testComponent.control.registerOnChange(spy);
+      testComponent.control.setValue('blue');
+
+      expect(spy).toHaveBeenCalled();
+    });
   });
 
   describe('as standalone', () => {
@@ -500,13 +565,23 @@ describe('MdButtonToggle', () => {
       expect(changeSpy).toHaveBeenCalledTimes(2);
     }));
 
+    it('should focus on underlying input element when focus() is called', () => {
+      let nativeRadioInput = buttonToggleDebugElement.query(By.css('input')).nativeElement;
+      expect(document.activeElement).not.toBe(nativeRadioInput);
+
+      buttonToggleInstance.focus();
+      fixture.detectChanges();
+
+      expect(document.activeElement).toBe(nativeRadioInput);
+    });
+
   });
 });
 
 
 @Component({
   template: `
-  <md-button-toggle-group [disabled]="isGroupDisabled" [value]="groupValue">
+  <md-button-toggle-group [disabled]="isGroupDisabled" [vertical]="isVertical" [value]="groupValue">
     <md-button-toggle value="test1">Test1</md-button-toggle>
     <md-button-toggle value="test2">Test2</md-button-toggle>
     <md-button-toggle value="test3">Test3</md-button-toggle>
@@ -515,6 +590,7 @@ describe('MdButtonToggle', () => {
 })
 class ButtonTogglesInsideButtonToggleGroup {
   isGroupDisabled: boolean = false;
+  isVertical: boolean = false;
   groupValue: string = null;
 }
 
@@ -539,7 +615,7 @@ class ButtonToggleGroupWithNgModel {
 
 @Component({
   template: `
-  <md-button-toggle-group [disabled]="isGroupDisabled" multiple>
+  <md-button-toggle-group [disabled]="isGroupDisabled" [vertical]="isVertical" multiple>
     <md-button-toggle value="eggs">Eggs</md-button-toggle>
     <md-button-toggle value="flour">Flour</md-button-toggle>
     <md-button-toggle value="sugar">Sugar</md-button-toggle>
@@ -548,6 +624,7 @@ class ButtonToggleGroupWithNgModel {
 })
 class ButtonTogglesInsideButtonToggleGroupMultiple {
   isGroupDisabled: boolean = false;
+  isVertical: boolean = false;
 }
 
 @Component({
@@ -567,4 +644,17 @@ class StandaloneButtonToggle { }
 })
 class ButtonToggleGroupWithInitialValue {
   lastEvent: MdButtonToggleChange;
+}
+
+@Component({
+  template: `
+  <md-button-toggle-group [formControl]="control">
+    <md-button-toggle value="red">Value Red</md-button-toggle>
+    <md-button-toggle value="green">Value Green</md-button-toggle>
+    <md-button-toggle value="blue">Value Blue</md-button-toggle>
+  </md-button-toggle-group>
+  `
+})
+class ButtonToggleGroupWithFormControl {
+  control = new FormControl();
 }

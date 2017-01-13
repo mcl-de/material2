@@ -27,9 +27,18 @@
     </md-radio-group>
   </section>
   <section>
-    <md-input placeholder="Max radius" aria-label="radius" [(ngModel)]="maxRadius"></md-input>
-    <md-input placeholder="Ripple color" aria-label="color" [(ngModel)]="rippleColor"></md-input>
-    <md-input placeholder="Ripple background" aria-label="background" [(ngModel)]="rippleBackgroundColor"></md-input>
+    <md-input-container>
+      <input mdInput placeholder="Max radius" aria-label="radius" [(ngModel)]="maxRadius">
+    </md-input-container>
+    <md-input-container>
+      <input mdInput placeholder="Ripple color" aria-label="color" [(ngModel)]="rippleColor">
+    </md-input-container>
+    <md-input-container>
+      <input mdInput
+             placeholder="Ripple background"
+             aria-label="background"
+             [(ngModel)]="rippleBackgroundColor">
+    </md-input-container>
   </section>
   <section>
     <button md-raised-button (click)="doManualRipple()">Manual ripple</button>
@@ -39,13 +48,13 @@
         [class.demo-ripple-disabled]="disabled"
         [class.demo-ripple-rounded]="rounded"
         md-ripple
-        [md-ripple-centered]="centered"
-        [md-ripple-disabled]="disabled"
-        [md-ripple-unbounded]="unbounded"
-        [md-ripple-max-radius]="maxRadius"
-        [md-ripple-color]="rippleColor"
-        [md-ripple-background-color]="rippleBackgroundColor"
-        [md-ripple-speed-factor]="rippleSpeed">
+        [mdRippleCentered]="centered"
+        [mdRippleDisabled]="disabled"
+        [mdRippleUnbounded]="unbounded"
+        [mdRippleMaxRadius]="maxRadius"
+        [mdRippleColor]="rippleColor"
+        [mdRippleBackgroundColor]="rippleBackgroundColor"
+        [mdRippleSpeedFactor]="rippleSpeed">
       Click me
     </div>
   </section>

@@ -8,12 +8,12 @@ import {
   QueryList,
   AfterContentInit
 } from '@angular/core';
-import { MdLine, MdLineSetter } from '../core';
+import {MdLine, MdLineSetter} from '../core';
 import {coerceToNumber} from './grid-list-measure';
 
 @Component({
   moduleId: module.id,
-  selector: 'md-grid-tile',
+  selector: 'md-grid-tile, mat-grid-tile',
   host: { 'role': 'listitem' },
   templateUrl: 'grid-tile.html',
   styleUrls: ['grid-list.css'],
@@ -25,23 +25,15 @@ export class MdGridTile {
 
   constructor(private _renderer: Renderer, private _element: ElementRef) {}
 
+  /** Amount of rows that the grid tile takes up. */
   @Input()
-  get rowspan() {
-    return this._rowspan;
-  }
+  get rowspan() { return this._rowspan; }
+  set rowspan(value) { this._rowspan = coerceToNumber(value); }
 
+  /** Amount of columns that the grid tile takes up. */
   @Input()
-  get colspan() {
-    return this._colspan;
-  }
-
-  set rowspan(value) {
-    this._rowspan = coerceToNumber(value);
-  }
-
-  set colspan(value) {
-    this._colspan = coerceToNumber(value);
-  }
+  get colspan() { return this._colspan; }
+  set colspan(value) { this._colspan = coerceToNumber(value); }
 
   /**
    * Sets the style of the grid-tile element.  Needs to be set manually to avoid
@@ -55,7 +47,7 @@ export class MdGridTile {
 
 @Component({
   moduleId: module.id,
-  selector: 'md-grid-tile-header, md-grid-tile-footer',
+  selector: 'md-grid-tile-header, mat-grid-tile-header, md-grid-tile-footer, mat-grid-tile-footer',
   templateUrl: 'grid-tile-text.html'
 })
 export class MdGridTileText implements AfterContentInit {

@@ -1,39 +1,53 @@
 // TODO(kara): prevent-close functionality
 
 import {
+  AfterContentInit,
   Attribute,
   Component,
   ContentChildren,
   EventEmitter,
   Input,
+  OnDestroy,
   Output,
   QueryList,
   TemplateRef,
   ViewChild,
-  ViewEncapsulation
+  ViewEncapsulation,
 } from '@angular/core';
 import {MenuPositionX, MenuPositionY} from './menu-positions';
 import {MdMenuInvalidPositionX, MdMenuInvalidPositionY} from './menu-errors';
 import {MdMenuItem} from './menu-item';
-import {UP_ARROW, DOWN_ARROW, TAB} from '../core';
+import {ListKeyManager} from '../core/a11y/list-key-manager';
+import {MdMenuPanel} from './menu-panel';
+import {Subscription} from 'rxjs/Subscription';
+import {transformMenu, fadeInItems} from './menu-animations';
 
 @Component({
   moduleId: module.id,
-  selector: 'md-menu',
+  selector: 'md-menu, mat-menu',
   host: {'role': 'menu'},
   templateUrl: 'menu.html',
   styleUrls: ['menu.css'],
   encapsulation: ViewEncapsulation.None,
+  animations: [
+    transformMenu,
+    fadeInItems
+  ],
   exportAs: 'mdMenu'
 })
-export class MdMenu {
-  _showClickCatcher: boolean = false;
-  private _focusedItemIndex: number = 0;
+export class MdMenu implements AfterContentInit, MdMenuPanel, OnDestroy {
+  private _keyManager: ListKeyManager;
 
-  // config object to be passed into the menu's ngClass
-  _classList: Object;
+  /** Subscription to tab events on the menu panel */
+  private _tabSubscription: Subscription;
 
+  /** Config object to be passed into the menu's ngClass */
+  _classList: any = {};
+
+  /** Position of the menu in the X axis. */
   positionX: MenuPositionX = 'after';
+
+  /** Position of the menu in the Y axis. */
   positionY: MenuPositionY = 'below';
 
   @ViewChild(TemplateRef) templateRef: TemplateRef<any>;
@@ -43,6 +57,18 @@ export class MdMenu {
               @Attribute('y-position') posY: MenuPositionY) {
     if (posX) { this._setPositionX(posX); }
     if (posY) { this._setPositionY(posY); }
+    this.setPositionClasses(this.positionX, this.positionY);
+  }
+
+  ngAfterContentInit() {
+    this._keyManager = new ListKeyManager(this.items).withFocusWrap();
+    this._tabSubscription = this._keyManager.tabOut.subscribe(() => {
+      this._emitCloseEvent();
+    });
+  }
+
+  ngOnDestroy() {
+    this._tabSubscription.unsubscribe();
   }
 
   /**
@@ -57,79 +83,26 @@ export class MdMenu {
       obj[className] = true;
       return obj;
     }, {});
+    this.setPositionClasses(this.positionX, this.positionY);
   }
 
-  @Output() close = new EventEmitter;
-
-  /**
-   * This function toggles the display of the menu's click catcher element.
-   * This element covers the viewport when the menu is open to detect clicks outside the menu.
-   * TODO: internal
-   */
-  _setClickCatcher(bool: boolean): void {
-    this._showClickCatcher = bool;
-  }
+  /** Event emitted when the menu is closed. */
+  @Output() close = new EventEmitter<void>();
 
   /**
    * Focus the first item in the menu. This method is used by the menu trigger
    * to focus the first item when the menu is opened by the ENTER key.
-   * TODO: internal
    */
-  _focusFirstItem() {
-    this.items.first.focus();
-  }
-
-  // TODO(kara): update this when (keydown.downArrow) testability is fixed
-  // TODO: internal
-  _handleKeydown(event: KeyboardEvent): void {
-    if (event.keyCode === DOWN_ARROW) {
-      this._focusNextItem();
-    } else if (event.keyCode === UP_ARROW) {
-      this._focusPreviousItem();
-    } else if (event.keyCode === TAB) {
-      this._emitCloseEvent();
-    }
+  focusFirstItem() {
+    this._keyManager.focusFirstItem();
   }
 
   /**
    * This emits a close event to which the trigger is subscribed. When emitted, the
    * trigger will close the menu.
    */
-  private _emitCloseEvent(): void {
-    this._focusedItemIndex = 0;
-    this.close.emit(null);
-  }
-
-  private _focusNextItem(): void {
-    this._updateFocusedItemIndex(1);
-    this.items.toArray()[this._focusedItemIndex].focus();
-  }
-
-  private _focusPreviousItem(): void {
-    this._updateFocusedItemIndex(-1);
-    this.items.toArray()[this._focusedItemIndex].focus();
-  }
-
-  /**
-   * This method sets focus to the correct menu item, given a list of menu items and the delta
-   * between the currently focused menu item and the new menu item to be focused. It will
-   * continue to move down the list until it finds an item that is not disabled, and it will wrap
-   * if it encounters either end of the menu.
-   *
-   * @param delta the desired change in focus index
-   * @param menuItems the menu items that should be focused
-   * @private
-     */
-  private _updateFocusedItemIndex(delta: number, menuItems: MdMenuItem[] = this.items.toArray()) {
-    // when focus would leave menu, wrap to beginning or end
-    this._focusedItemIndex = (this._focusedItemIndex + delta + this.items.length)
-                              % this.items.length;
-
-    // skip all disabled menu items recursively until an active one
-    // is reached or the menu closes for overreaching bounds
-    while (menuItems[this._focusedItemIndex].disabled) {
-      this._updateFocusedItemIndex(delta, menuItems);
-    }
+  _emitCloseEvent(): void {
+    this.close.emit();
   }
 
   private _setPositionX(pos: MenuPositionX): void {
@@ -145,4 +118,16 @@ export class MdMenu {
     }
     this.positionY = pos;
   }
+
+  /**
+   * It's necessary to set position-based classes to ensure the menu panel animation
+   * folds out from the correct direction.
+   */
+  setPositionClasses(posX: MenuPositionX, posY: MenuPositionY): void {
+    this._classList['md-menu-before'] = posX == 'before';
+    this._classList['md-menu-after'] = posX == 'after';
+    this._classList['md-menu-above'] = posY == 'above';
+    this._classList['md-menu-below'] = posY == 'below';
+  }
+
 }

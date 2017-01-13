@@ -1,4 +1,4 @@
-import {Component, ViewContainerRef} from '@angular/core';
+import {Component} from '@angular/core';
 import {MdSnackBar, MdSnackBarConfig} from '@angular/material';
 
 @Component({
@@ -10,22 +10,15 @@ export class SnackBarDemo {
   message: string = 'Snack Bar opened.';
   actionButtonLabel: string = 'Retry';
   action: boolean = false;
+  setAutoHide: boolean = true;
+  autoHide: number = 0;
 
   constructor(
-      public snackBar: MdSnackBar,
-      public viewContainerRef: ViewContainerRef) { }
+      public snackBar: MdSnackBar) { }
 
   open() {
-    let config = new MdSnackBarConfig(this.viewContainerRef);
+    let config = new MdSnackBarConfig();
+    config.duration = this.autoHide;
     this.snackBar.open(this.message, this.action && this.actionButtonLabel, config);
   }
 }
-
-
-@Component({
-  moduleId: module.id,
-  selector: 'demo-snack',
-  templateUrl: 'snack-bar-demo.html',
-  styleUrls: ['./snack-bar-demo.css'],
-})
-export class DemoSnack {}

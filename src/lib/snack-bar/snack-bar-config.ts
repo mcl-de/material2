@@ -1,18 +1,19 @@
 import {ViewContainerRef} from '@angular/core';
 import {AriaLivePoliteness} from '../core';
 
-
+/**
+ * Configuration used when opening a snack-bar.
+ */
 export class MdSnackBarConfig {
   /** The politeness level for the MdAriaLiveAnnouncer announcement. */
-  politeness: AriaLivePoliteness = 'assertive';
+  politeness?: AriaLivePoliteness = 'assertive';
 
   /** Message to be announced by the MdAriaLiveAnnouncer */
-  announcementMessage: string;
+  announcementMessage?: string = '';
 
   /** The view container to place the overlay for the snack bar into. */
-  viewContainerRef: ViewContainerRef;
+  viewContainerRef?: ViewContainerRef = null;
 
-  constructor(viewContainerRef: ViewContainerRef) {
-    this.viewContainerRef = viewContainerRef;
-  }
+  /** The length of time in milliseconds to wait before automatically dismissing the snack bar. */
+  duration?: number = 0;
 }

@@ -1,4 +1,4 @@
-import {TestBed, ComponentFixture} from '@angular/core/testing';
+import {TestBed, ComponentFixture, fakeAsync, tick} from '@angular/core/testing';
 import {Component, ViewChild} from '@angular/core';
 import {MdRipple, MdRippleModule} from './ripple';
 
@@ -64,7 +64,11 @@ describe('MdRipple', () => {
   beforeEach(() => {
     TestBed.configureTestingModule({
       imports: [MdRippleModule.forRoot()],
-      declarations: [BasicRippleContainer, RippleContainerWithInputBindings],
+      declarations: [
+        BasicRippleContainer,
+        RippleContainerWithInputBindings,
+        RippleContainerWithNgIf,
+      ],
     });
   });
 
@@ -128,6 +132,15 @@ describe('MdRipple', () => {
       expect(rippleElement.querySelectorAll('.md-ripple-foreground').length).toBe(0);
     });
 
+    it('removes foreground ripples after timeout', fakeAsync(() => {
+      rippleElement.click();
+      expect(rippleElement.querySelectorAll('.md-ripple-foreground').length).toBe(1);
+
+      tick(1600);
+
+      expect(rippleElement.querySelectorAll('.md-ripple-foreground').length).toBe(0);
+    }));
+
     it('creates ripples when manually triggered', () => {
       const rippleComponent = fixture.debugElement.componentInstance.ripple;
       // start() should show the background, but no foreground ripple yet.
@@ -180,6 +193,94 @@ describe('MdRipple', () => {
       expect(pxStringToFloat(ripple.style.width)).toBeCloseTo(2 * expectedRadius, 1);
       expect(pxStringToFloat(ripple.style.height)).toBeCloseTo(2 * expectedRadius, 1);
     });
+
+
+    it('cleans up the event handlers when the container gets destroyed', () => {
+      fixture = TestBed.createComponent(RippleContainerWithNgIf);
+      fixture.detectChanges();
+
+      rippleElement = fixture.debugElement.nativeElement.querySelector('[md-ripple]');
+      rippleBackground = rippleElement.querySelector('.md-ripple-background');
+
+      fixture.componentInstance.isDestroyed = true;
+      fixture.detectChanges();
+
+      rippleElement.dispatchEvent(createMouseEvent('mousedown'));
+      expect(rippleBackground.classList).not.toContain('md-ripple-active');
+    });
+
+    describe('when page is scrolled', () => {
+      const startingWindowWidth = window.innerWidth;
+      const startingWindowHeight = window.innerHeight;
+      var veryLargeElement: HTMLDivElement = document.createElement('div');
+      var pageScrollTop = 500;
+      var pageScrollLeft = 500;
+
+      beforeEach(() => {
+        // Add a very large element to make the page scroll
+        veryLargeElement.style.width = '4000px';
+        veryLargeElement.style.height = '4000px';
+        document.body.appendChild(veryLargeElement);
+        document.body.scrollTop = pageScrollTop;
+        document.body.scrollLeft = pageScrollLeft;
+        // Firefox
+        document.documentElement.scrollLeft = pageScrollLeft;
+        document.documentElement.scrollTop = pageScrollTop;
+        // Mobile safari
+        window.scrollTo(pageScrollLeft, pageScrollTop);
+      });
+
+      afterEach(() => {
+        document.body.removeChild(veryLargeElement);
+        document.body.scrollTop = 0;
+        document.body.scrollLeft = 0;
+        // Firefox
+        document.documentElement.scrollLeft = 0;
+        document.documentElement.scrollTop = 0;
+        // Mobile safari
+        window.scrollTo(0, 0);
+      });
+
+      it('create ripple with correct position', () => {
+        let elementTop = 600;
+        let elementLeft = 750;
+        let left = 50;
+        let top = 75;
+
+        rippleElement.style.left = `${elementLeft}px`;
+        rippleElement.style.top = `${elementTop}px`;
+
+        // Simulate a keyboard-triggered click by setting event coordinates to 0.
+        const clickEvent = createMouseEvent('click', {
+          clientX: left + elementLeft - pageScrollLeft,
+          clientY: top + elementTop - pageScrollTop,
+          screenX: left + elementLeft,
+          screenY: top + elementTop
+        });
+        rippleElement.dispatchEvent(clickEvent);
+
+        const expectedRadius = Math.sqrt(250 * 250 + 125 * 125);
+        const expectedLeft = left - expectedRadius;
+        const expectedTop = top - expectedRadius;
+
+        const ripple = <HTMLElement>rippleElement.querySelector('.md-ripple-foreground');
+
+        // In the iOS simulator (BrowserStack & SauceLabs), adding the content to the
+        // body causes karma's iframe for the test to stretch to fit that content once we attempt to
+        // scroll the page. Setting width / height / maxWidth / maxHeight on the iframe does not
+        // successfully constrain its size. As such, skip assertions in environments where the
+        // window size has changed since the start of the test.
+        if (window.innerWidth > startingWindowWidth || window.innerHeight > startingWindowHeight) {
+          return;
+        }
+
+        expect(pxStringToFloat(ripple.style.left)).toBeCloseTo(expectedLeft, 1);
+        expect(pxStringToFloat(ripple.style.top)).toBeCloseTo(expectedTop, 1);
+        expect(pxStringToFloat(ripple.style.width)).toBeCloseTo(2 * expectedRadius, 1);
+        expect(pxStringToFloat(ripple.style.height)).toBeCloseTo(2 * expectedRadius, 1);
+      });
+    });
+
   });
 
   describe('configuring behavior', () => {
@@ -293,6 +394,45 @@ describe('MdRipple', () => {
       expect(pxStringToFloat(ripple.style.height)).toBeCloseTo(2 * customRadius, 1);
     });
   });
+
+  describe('initially disabled ripple', () => {
+    let controller: RippleContainerWithInputBindings;
+    let rippleComponent: MdRipple;
+
+    beforeEach(() => {
+      fixture = TestBed.createComponent(RippleContainerWithInputBindings);
+      controller = fixture.debugElement.componentInstance;
+      controller.disabled = true;
+      fixture.detectChanges();
+
+      rippleComponent = controller.ripple;
+      rippleElement = fixture.debugElement.nativeElement.querySelector('[md-ripple]');
+    });
+
+    it('initially does not create background', () => {
+      rippleBackground = rippleElement.querySelector('.md-ripple-background');
+      expect(rippleBackground).toBeNull();
+    });
+
+    it('creates background when enabled', () => {
+      rippleBackground = rippleElement.querySelector('.md-ripple-background');
+      expect(rippleBackground).toBeNull();
+
+      controller.disabled = false;
+      fixture.detectChanges();
+      rippleBackground = rippleElement.querySelector('.md-ripple-background');
+      expect(rippleBackground).toBeTruthy();
+    });
+
+    it('creates background when manually activated', () => {
+      rippleBackground = rippleElement.querySelector('.md-ripple-background');
+      expect(rippleBackground).toBeNull();
+
+      rippleComponent.start();
+      rippleBackground = rippleElement.querySelector('.md-ripple-background');
+      expect(rippleBackground).toBeTruthy();
+    });
+  });
 });
 
 @Component({
@@ -309,12 +449,12 @@ class BasicRippleContainer {
   template: `
     <div id="container" style="position: relative; width:300px; height:200px;"
       md-ripple
-      [md-ripple-trigger]="trigger"
-      [md-ripple-centered]="centered"
-      [md-ripple-max-radius]="maxRadius"
-      [md-ripple-disabled]="disabled"
-      [md-ripple-color]="color"
-      [md-ripple-background-color]="backgroundColor">
+      [mdRippleTrigger]="trigger"
+      [mdRippleCentered]="centered"
+      [mdRippleMaxRadius]="maxRadius"
+      [mdRippleDisabled]="disabled"
+      [mdRippleColor]="color"
+      [mdRippleBackgroundColor]="backgroundColor">
     </div>
     <div class="alternateTrigger"></div>
   `,
@@ -327,4 +467,10 @@ class RippleContainerWithInputBindings {
   color = '';
   backgroundColor = '';
   @ViewChild(MdRipple) ripple: MdRipple;
+}
+
+@Component({ template: `<div id="container" md-ripple *ngIf="!isDestroyed"></div>` })
+class RippleContainerWithNgIf {
+  @ViewChild(MdRipple) ripple: MdRipple;
+  isDestroyed = false;
 }

@@ -1,4 +1,5 @@
-import { MenuPage } from './menu-page';
+import {browser, Key, protractor} from 'protractor';
+import {MenuPage} from './menu-page';
 
 describe('menu', () => {
   let page: MenuPage;
@@ -12,13 +13,7 @@ describe('menu', () => {
     page.trigger().click();
 
     page.expectMenuPresent(true);
-    expect(page.menu().getText()).toEqual("One\nTwo\nThree\nFour");
-  });
-
-  it('should close menu when area outside menu is clicked', () => {
-    page.trigger().click();
-    page.body().click();
-    page.expectMenuPresent(false);
+    expect(page.menu().getText()).toEqual('One\nTwo\nThree\nFour');
   });
 
   it('should close menu when menu item is clicked', () => {
@@ -45,24 +40,24 @@ describe('menu', () => {
 
   it('should support multiple triggers opening the same menu', () => {
     page.triggerTwo().click();
-    expect(page.menu().getText()).toEqual("One\nTwo\nThree\nFour");
+    expect(page.menu().getText()).toEqual('One\nTwo\nThree\nFour');
     page.expectMenuAlignedWith(page.menu(), 'trigger-two');
 
-    page.body().click();
+    page.backdrop().click();
     page.expectMenuPresent(false);
 
     page.trigger().click();
-    expect(page.menu().getText()).toEqual("One\nTwo\nThree\nFour");
+    expect(page.menu().getText()).toEqual('One\nTwo\nThree\nFour');
     page.expectMenuAlignedWith(page.menu(), 'trigger');
 
-    page.body().click();
+    page.backdrop().click();
     page.expectMenuPresent(false);
   });
 
   it('should mirror classes on host to menu template in overlay', () => {
     page.trigger().click();
-    page.menu().getAttribute('class').then((classes) => {
-      expect(classes).toEqual('md-menu custom');
+    page.menu().getAttribute('class').then((classes: string) => {
+      expect(classes).toContain('md-menu-panel custom');
     });
   });
 
@@ -70,11 +65,16 @@ describe('menu', () => {
     beforeEach(() => {
       // click start button to avoid tabbing past navigation
       page.start().click();
-      page.pressKey(protractor.Key.TAB);
+      page.pressKey(Key.TAB);
     });
 
-    it('should auto-focus the first item when opened with keyboard', () => {
-      page.pressKey(protractor.Key.ENTER);
+    it('should auto-focus the first item when opened with ENTER', () => {
+      page.pressKey(Key.ENTER);
+      page.expectFocusOn(page.items(0));
+    });
+
+    it('should auto-focus the first item when opened with SPACE', () => {
+      page.pressKey(Key.SPACE);
       page.expectFocusOn(page.items(0));
     });
 
@@ -84,59 +84,60 @@ describe('menu', () => {
     });
 
     it('should focus subsequent items when down arrow is pressed', () => {
-      page.pressKey(protractor.Key.ENTER);
-      page.pressKey(protractor.Key.DOWN);
+      page.pressKey(Key.ENTER);
+      page.pressKey(Key.DOWN);
       page.expectFocusOn(page.items(1));
     });
 
     it('should focus previous items when up arrow is pressed', () => {
-      page.pressKey(protractor.Key.ENTER);
-      page.pressKey(protractor.Key.DOWN);
-      page.pressKey(protractor.Key.UP);
+      page.pressKey(Key.ENTER);
+      page.pressKey(Key.DOWN);
+      page.pressKey(Key.UP);
       page.expectFocusOn(page.items(0));
     });
 
     it('should skip disabled items using arrow keys', () => {
-      page.pressKey(protractor.Key.ENTER);
-      page.pressKey(protractor.Key.DOWN);
-      page.pressKey(protractor.Key.DOWN);
+      page.pressKey(Key.ENTER);
+      page.pressKey(Key.DOWN);
+      page.pressKey(Key.DOWN);
       page.expectFocusOn(page.items(3));
 
-      page.pressKey(protractor.Key.UP);
+      page.pressKey(Key.UP);
       page.expectFocusOn(page.items(1));
     });
 
     it('should close the menu when tabbing past items', () => {
-      page.pressKey(protractor.Key.ENTER);
-      page.pressKey(protractor.Key.TAB);
+      page.pressKey(Key.ENTER);
+      page.pressKey(Key.TAB);
       page.expectMenuPresent(false);
 
-      page.start().click();
-      page.pressKey(protractor.Key.TAB);
-      page.pressKey(protractor.Key.ENTER);
-      page.pressKey(protractor.Key.chord(protractor.Key.SHIFT, protractor.Key.TAB));
+      page.pressKey(Key.TAB);
+      page.pressKey(Key.ENTER);
+      page.expectMenuPresent(true);
+
+      page.pressKey(protractor.Key.chord(Key.SHIFT, Key.TAB));
       page.expectMenuPresent(false);
     });
 
     it('should wrap back to menu when arrow keying past items', () => {
-      page.pressKey(protractor.Key.ENTER);
-      page.pressKey(protractor.Key.DOWN);
-      page.pressKey(protractor.Key.DOWN);
-      page.pressKey(protractor.Key.DOWN);
+      page.pressKey(Key.ENTER);
+      page.pressKey(Key.DOWN);
+      page.pressKey(Key.DOWN);
+      page.pressKey(Key.DOWN);
       page.expectFocusOn(page.items(0));
 
-      page.pressKey(protractor.Key.UP);
+      page.pressKey(Key.UP);
       page.expectFocusOn(page.items(3));
     });
 
     it('should focus before and after trigger when tabbing past items', () => {
-      page.pressKey(protractor.Key.ENTER);
-      page.pressKey(protractor.Key.TAB);
+      page.pressKey(Key.ENTER);
+      page.pressKey(Key.TAB);
       page.expectFocusOn(page.triggerTwo());
 
       // navigate back to trigger
       page.pressKey(protractor.Key.chord(protractor.Key.SHIFT, protractor.Key.TAB));
-      page.pressKey(protractor.Key.ENTER);
+      page.pressKey(Key.ENTER);
 
       page.pressKey(protractor.Key.chord(protractor.Key.SHIFT, protractor.Key.TAB));
       page.expectFocusOn(page.start());
@@ -155,7 +156,7 @@ describe('menu', () => {
 
     it('should align overlay end to origin end when x-position is "before"', () => {
       page.beforeTrigger().click();
-      page.beforeTrigger().getLocation().then((trigger) => {
+      page.beforeTrigger().getLocation().then(trigger => {
 
         // the menu's right corner must be attached to the trigger's right corner.
         // menu = 112px wide. trigger = 60px wide.  112 - 60 =  52px of menu to the left of trigger.
@@ -167,7 +168,7 @@ describe('menu', () => {
 
     it('should align overlay bottom to origin bottom when y-position is "above"', () => {
       page.aboveTrigger().click();
-      page.aboveTrigger().getLocation().then((trigger) => {
+      page.aboveTrigger().getLocation().then(trigger => {
 
         // the menu's bottom corner must be attached to the trigger's bottom corner.
         // menu.x should equal trigger.x because only y position has changed.
@@ -179,7 +180,7 @@ describe('menu', () => {
 
     it('should align menu to top left of trigger when "below" and "above"', () => {
       page.combinedTrigger().click();
-      page.combinedTrigger().getLocation().then((trigger) => {
+      page.combinedTrigger().getLocation().then(trigger => {
 
         // trigger.x (left corner) - 52px (menu left of trigger) = expected menu.x
         // trigger.y (top corner) - 44px (menu above trigger) = expected menu.y

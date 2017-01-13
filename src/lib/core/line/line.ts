@@ -5,16 +5,21 @@ import {
     ElementRef,
     QueryList
 } from '@angular/core';
+import {DefaultStyleCompatibilityModeModule} from '../compatibility/default-mode';
+
 
 /**
  * Shared directive to count lines inside a text area, such as a list item.
  * Line elements can be extracted with a @ContentChildren(MdLine) query, then
  * counted by checking the query list's length.
  */
-@Directive({ selector: '[md-line]' })
+@Directive({ selector: '[md-line], [mat-line]' })
 export class MdLine {}
 
-/* Helper that takes a query list of lines and sets the correct class on the host */
+/**
+ * Helper that takes a query list of lines and sets the correct class on the host.
+ * @docs-private
+ */
 export class MdLineSetter {
   constructor(private _lines: QueryList<MdLine>, private _renderer: Renderer,
               private _element: ElementRef) {
@@ -25,17 +30,19 @@ export class MdLineSetter {
     });
   }
 
-
   private _setLineClass(count: number): void {
     this._resetClasses();
     if (count === 2 || count === 3) {
       this._setClass(`md-${count}-line`, true);
+    } else if (count > 3) {
+      this._setClass(`md-multi-line`, true);
     }
   }
 
   private _resetClasses(): void {
     this._setClass('md-2-line', false);
     this._setClass('md-3-line', false);
+    this._setClass('md-multi-line', false);
   }
 
   private _setClass(className: string, bool: boolean): void {
@@ -45,7 +52,8 @@ export class MdLineSetter {
 }
 
 @NgModule({
-  exports: [MdLine],
+  imports: [DefaultStyleCompatibilityModeModule],
+  exports: [MdLine, DefaultStyleCompatibilityModeModule],
   declarations: [MdLine],
 })
 export class MdLineModule { }

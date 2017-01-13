@@ -1,4 +1,4 @@
-import ElementFinder = protractor.ElementFinder;
+import {browser, by, element, ElementFinder, ProtractorBy} from 'protractor';
 
 export class MenuPage {
 
@@ -6,7 +6,7 @@ export class MenuPage {
     browser.get('/menu');
   }
 
-  menu() { return element(by.css('.md-menu')); }
+  menu() { return element(by.css('.md-menu-panel')); }
 
   start() { return element(by.id('start')); }
 
@@ -14,11 +14,9 @@ export class MenuPage {
 
   triggerTwo() { return element(by.id('trigger-two')); }
 
-  body() { return element(by.tagName('body')); }
+  backdrop() { return element(by.css('.cdk-overlay-backdrop')); }
 
-  items(index: number) {
-    return element.all(by.css('[md-menu-item]')).get(index);
-  }
+  items(index: number) { return element.all(by.css('[md-menu-item]')).get(index); }
 
   textArea() { return element(by.id('text')); }
 
@@ -28,38 +26,39 @@ export class MenuPage {
 
   combinedTrigger() { return element(by.id('combined-t')); }
 
-  beforeMenu() { return element(by.css('.md-menu.before')); }
+  beforeMenu() { return element(by.css('.md-menu-panel.before')); }
 
-  aboveMenu() { return element(by.css('.md-menu.above')); }
+  aboveMenu() { return element(by.css('.md-menu-panel.above')); }
 
-  combinedMenu() { return element(by.css('.md-menu.combined')); }
+  combinedMenu() { return element(by.css('.md-menu-panel.combined')); }
 
   // TODO(kara): move to common testing utility
-  pressKey(key: any): void {
+  pressKey(key: string): void {
     browser.actions().sendKeys(key).perform();
   }
 
   // TODO(kara): move to common testing utility
-  expectFocusOn(el: ElementFinder): void {
+  expectFocusOn(el: any): void {
     expect(browser.driver.switchTo().activeElement().getInnerHtml())
         .toBe(el.getInnerHtml());
   }
 
   expectMenuPresent(expected: boolean) {
-    return browser.isElementPresent(by.css('.md-menu')).then((isPresent) => {
-      expect(isPresent).toBe(expected);
-    });
+    return browser.isElementPresent(by.css('.md-menu-panel') as ProtractorBy)
+        .then((isPresent: boolean) => {
+          expect(isPresent).toBe(expected);
+        });
   }
 
-  expectMenuLocation(el: ElementFinder, {x,y}: {x: number, y: number}) {
-    el.getLocation().then((loc) => {
-      expect(loc.x).toEqual(x);
-      expect(loc.y).toEqual(y);
+  expectMenuLocation(el: ElementFinder, {x, y}: {x: number, y: number}) {
+    el.getLocation().then(loc => {
+      expect(loc.x).toEqual(x, 'Expect the x-position to be equal');
+      expect(loc.y).toEqual(y, 'Expect the y-position to be equal');
     });
   }
 
   expectMenuAlignedWith(el: ElementFinder, id: string) {
-    element(by.id(id)).getLocation().then((loc) => {
+    element(by.id(id)).getLocation().then(loc => {
       this.expectMenuLocation(el, {x: loc.x, y: loc.y});
     });
   }

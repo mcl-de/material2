@@ -1,6 +1,7 @@
 <label class="md-checkbox-layout">
   <div class="md-checkbox-inner-container">
-    <input class="md-checkbox-input md-visually-hidden" type="checkbox"
+    <input #input
+           class="md-checkbox-input cdk-visually-hidden" type="checkbox"
            [id]="inputId"
            [required]="required"
            [checked]="checked"
@@ -14,7 +15,11 @@
            (blur)="_onInputBlur()"
            (change)="_onInteractionEvent($event)"
            (click)="_onInputClick($event)">
-    <div class="md-ink-ripple"></div>
+    <div md-ripple *ngIf="!_isRippleDisabled()" class="md-checkbox-ripple"
+         [mdRippleTrigger]="_getHostElement()"
+         [mdRippleCentered]="true"
+         [mdRippleSpeedFactor]="0.3"
+         mdRippleBackgroundColor="rgba(0, 0, 0, 0)"></div>
     <div class="md-checkbox-frame"></div>
     <div class="md-checkbox-background">
       <svg version="1.1"

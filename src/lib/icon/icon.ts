@@ -1,22 +1,24 @@
 import {
-    NgModule,
-    ModuleWithProviders,
-    ChangeDetectionStrategy,
-    Component,
-    ElementRef,
-    Input,
-    OnChanges,
-    OnInit,
-    Renderer,
-    SimpleChange,
-    ViewEncapsulation,
-    AfterViewChecked
+  NgModule,
+  ModuleWithProviders,
+  ChangeDetectionStrategy,
+  Component,
+  ElementRef,
+  Input,
+  OnChanges,
+  OnInit,
+  Renderer,
+  SimpleChange,
+  ViewEncapsulation,
+  AfterViewChecked,
+  Optional,
+  SkipSelf,
 } from '@angular/core';
-import {HttpModule} from '@angular/http';
-import {MdError} from '../core';
+import {HttpModule, Http} from '@angular/http';
+import {DomSanitizer} from '@angular/platform-browser';
+import {MdError, DefaultStyleCompatibilityModeModule} from '../core';
 import {MdIconRegistry} from './icon-registry';
 export {MdIconRegistry} from './icon-registry';
-
 
 /** Exception thrown when an invalid icon name is passed to an md-icon component. */
 export class MdIconInvalidNameError extends MdError {
@@ -61,7 +63,7 @@ export class MdIconInvalidNameError extends MdError {
 @Component({
   moduleId: module.id,
   template: '<ng-content></ng-content>',
-  selector: 'md-icon',
+  selector: 'md-icon, mat-icon',
   styleUrls: ['icon.css'],
   host: {
     'role': 'img',
@@ -70,21 +72,47 @@ export class MdIconInvalidNameError extends MdError {
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class MdIcon implements OnChanges, OnInit, AfterViewChecked {
-  @Input() svgSrc: string;
+  private _color: string;
+
+  /** Name of the icon in the SVG icon set. */
   @Input() svgIcon: string;
+
+  /** Font set that the icon is a part of. */
   @Input() fontSet: string;
+
+  /** Name of an icon within a font set. */
   @Input() fontIcon: string;
+
+  /** Alt label to be used for accessibility. */
   @Input() alt: string;
 
+  /** Screenreader label for the icon. */
   @Input('aria-label') hostAriaLabel: string = '';
+
+  /** Color of the icon. */
+  @Input()
+  get color(): string { return this._color; }
+  set color(value: string) { this._updateColor(value); }
 
   private _previousFontSetClass: string;
   private _previousFontIconClass: string;
 
   constructor(
-      private _element: ElementRef,
+      private _elementRef: ElementRef,
       private _renderer: Renderer,
       private _mdIconRegistry: MdIconRegistry) { }
+
+  _updateColor(newColor: string) {
+    this._setElementColor(this._color, false);
+    this._setElementColor(newColor, true);
+    this._color = newColor;
+  }
+
+  _setElementColor(color: string, isAdd: boolean) {
+    if (color != null && color != '') {
+      this._renderer.setElementClass(this._elementRef.nativeElement, `md-${color}`, isAdd);
+    }
+  }
 
   /**
    * Splits an svgIcon binding value into its icon set and icon name components.
@@ -115,18 +143,13 @@ export class MdIcon implements OnChanges, OnInit, AfterViewChecked {
     }
   }
 
-  /** TODO: internal */
   ngOnChanges(changes: { [propertyName: string]: SimpleChange }) {
     const changedInputs = Object.keys(changes);
     // Only update the inline SVG icon if the inputs changed, to avoid unnecessary DOM operations.
     if (changedInputs.indexOf('svgIcon') != -1 || changedInputs.indexOf('svgSrc') != -1) {
       if (this.svgIcon) {
         const [namespace, iconName] = this._splitIconName(this.svgIcon);
-        this._mdIconRegistry.getNamedSvgIcon(iconName, namespace).subscribe(
-            svg => this._setSvgElement(svg),
-            (err: any) => console.log(`Error retrieving icon: ${err}`));
-      } else if (this.svgSrc) {
-        this._mdIconRegistry.getSvgIconFromUrl(this.svgSrc).subscribe(
+        this._mdIconRegistry.getNamedSvgIcon(iconName, namespace).first().subscribe(
             svg => this._setSvgElement(svg),
             (err: any) => console.log(`Error retrieving icon: ${err}`));
       }
@@ -137,7 +160,6 @@ export class MdIcon implements OnChanges, OnInit, AfterViewChecked {
     this._updateAriaLabel();
   }
 
-  /** TODO: internal */
   ngOnInit() {
     // Update font classes because ngOnChanges won't be called if none of the inputs are present,
     // e.g. <md-icon>arrow</md-icon>. In this case we need to add a CSS class for the default font.
@@ -146,7 +168,6 @@ export class MdIcon implements OnChanges, OnInit, AfterViewChecked {
     }
   }
 
-  /** TODO: internal */
   ngAfterViewChecked() {
     // Update aria label here because it may depend on the projected text content.
     // (e.g. <md-icon>home</md-icon> should use 'home').
@@ -156,7 +177,7 @@ export class MdIcon implements OnChanges, OnInit, AfterViewChecked {
   private _updateAriaLabel() {
       const ariaLabel = this._getAriaLabel();
       if (ariaLabel) {
-        this._renderer.setElementAttribute(this._element.nativeElement, 'aria-label', ariaLabel);
+        this._renderer.setElementAttribute(this._elementRef.nativeElement, 'aria-label', ariaLabel);
       }
   }
 
@@ -174,7 +195,7 @@ export class MdIcon implements OnChanges, OnInit, AfterViewChecked {
     }
     // The "content" of an SVG icon is not a useful label.
     if (this._usingFontIcon()) {
-      const text = this._element.nativeElement.textContent;
+      const text = this._elementRef.nativeElement.textContent;
       if (text) {
         return text;
       }
@@ -184,11 +205,11 @@ export class MdIcon implements OnChanges, OnInit, AfterViewChecked {
   }
 
   private _usingFontIcon(): boolean {
-    return !(this.svgIcon || this.svgSrc);
+    return !this.svgIcon;
   }
 
   private _setSvgElement(svg: SVGElement) {
-    const layoutElement = this._element.nativeElement;
+    const layoutElement = this._elementRef.nativeElement;
     // Remove existing child nodes and add the new SVG element.
     // We would use renderer.detachView(Array.from(layoutElement.childNodes)) here,
     // but it fails in IE11: https://github.com/angular/angular/issues/6327
@@ -200,7 +221,7 @@ export class MdIcon implements OnChanges, OnInit, AfterViewChecked {
     if (!this._usingFontIcon()) {
       return;
     }
-    const elem = this._element.nativeElement;
+    const elem = this._elementRef.nativeElement;
     const fontSetClass = this.fontSet ?
         this._mdIconRegistry.classNameForFontAlias(this.fontSet) :
         this._mdIconRegistry.getDefaultFontSetClass();
@@ -226,17 +247,30 @@ export class MdIcon implements OnChanges, OnInit, AfterViewChecked {
   }
 }
 
+export function ICON_REGISTRY_PROVIDER_FACTORY(
+    parentRegistry: MdIconRegistry, http: Http, sanitizer: DomSanitizer) {
+  return parentRegistry || new MdIconRegistry(http, sanitizer);
+};
+
+export const ICON_REGISTRY_PROVIDER = {
+  // If there is already an MdIconRegistry available, use that. Otherwise, provide a new one.
+  provide: MdIconRegistry,
+  deps: [[new Optional(), new SkipSelf(), MdIconRegistry], Http, DomSanitizer],
+  useFactory: ICON_REGISTRY_PROVIDER_FACTORY,
+};
 
 @NgModule({
-  imports: [HttpModule],
-  exports: [MdIcon],
+  imports: [HttpModule, DefaultStyleCompatibilityModeModule],
+  exports: [MdIcon, DefaultStyleCompatibilityModeModule],
   declarations: [MdIcon],
+  providers: [ICON_REGISTRY_PROVIDER],
 })
 export class MdIconModule {
+  /** @deprecated */
   static forRoot(): ModuleWithProviders {
     return {
       ngModule: MdIconModule,
-      providers: [MdIconRegistry],
+      providers: [],
     };
   }
 }

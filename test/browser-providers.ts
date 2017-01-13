@@ -35,19 +35,17 @@ const configuration: { [name: string]: ConfigurationInfo } = {
   'IE10':         { unitTest: {target: null, required: true}, e2e: {target: null, required: true}},
   'IE11':         { unitTest: {target: 'SL', required: true}, e2e: {target: null, required: true}},
   'Edge':         { unitTest: {target: 'SL', required: true}, e2e: {target: null, required: true}},
-  'Android4.1':   { unitTest: {target: 'SL', required: false}, e2e: {target: null, required: true}},
-  'Android4.2':   { unitTest: {target: 'SL', required: false}, e2e: {target: null, required: true}},
-  'Android4.3':   { unitTest: {target: 'SL', required: false}, e2e: {target: null, required: true}},
+  'Android4.1':   { unitTest: {target: null, required: false}, e2e: {target: null, required: true}},
+  'Android4.2':   { unitTest: {target: null, required: false}, e2e: {target: null, required: true}},
+  'Android4.3':   { unitTest: {target: null, required: false}, e2e: {target: null, required: true}},
   'Android4.4':   { unitTest: {target: 'SL', required: false}, e2e: {target: null, required: true}},
   'Android5':     { unitTest: {target: 'SL', required: false}, e2e: {target: null, required: true}},
   'Safari7':      { unitTest: {target: null, required: false}, e2e: {target: null, required: true}},
   'Safari8':      { unitTest: {target: 'BS', required: false}, e2e: {target: null, required: true}},
   'Safari9':      { unitTest: {target: 'BS', required: false}, e2e: {target: null, required: true}},
-  'iOS7':         { unitTest: {target: 'BS', required: false}, e2e: {target: null, required: true}},
-  'iOS8':         { unitTest: {target: 'BS', required: true}, e2e: {target: null, required: true}},
-  // TODO(mlaval): iOS9 deactivated as not reliable, reactivate after
-  //               https://github.com/angular/angular/issues/5408
-  'iOS9':         { unitTest: {target: 'BS', required: false}, e2e: {target: null, required: true}},
+  'iOS7':         { unitTest: {target: null, required: false}, e2e: {target: null, required: true}},
+  'iOS8':         { unitTest: {target: null, required: false}, e2e: {target: null, required: true}},
+  'iOS9':         { unitTest: {target: 'BS', required: true}, e2e: {target: null, required: true}},
   'WindowsPhone': { unitTest: {target: 'BS', required: false}, e2e: {target: null, required: true}}
 };
 
@@ -65,7 +63,7 @@ export const customLaunchers: { [name: string]: BrowserLauncherInfo } = {
   'SL_CHROME': {
     base: 'SauceLabs',
     browserName: 'chrome',
-    version: '46'
+    version: 'latest'
   },
   'SL_CHROMEBETA': {
     base: 'SauceLabs',
@@ -80,7 +78,7 @@ export const customLaunchers: { [name: string]: BrowserLauncherInfo } = {
   'SL_FIREFOX': {
     base: 'SauceLabs',
     browserName: 'firefox',
-    version: '42'
+    version: 'latest'
   },
   'SL_FIREFOXBETA': {
     base: 'SauceLabs',
@@ -150,7 +148,7 @@ export const customLaunchers: { [name: string]: BrowserLauncherInfo } = {
     base: 'SauceLabs',
     browserName: 'microsoftedge',
     platform: 'Windows 10',
-    version: '20.10240'
+    version: '14'
   },
   'SL_ANDROID4.1': {
     base: 'SauceLabs',

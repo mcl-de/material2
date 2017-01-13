@@ -1,8 +1,9 @@
 import {
   ElementRef,
+  NgZone,
 } from '@angular/core';
 
-/** TODO: internal */
+/** @docs-private */
 export enum ForegroundRippleState {
   NEW,
   EXPANDING,
@@ -11,7 +12,7 @@ export enum ForegroundRippleState {
 
 /**
  * Wrapper for a foreground ripple DOM element and its animation state.
- * TODO: internal
+ * @docs-private
  */
 export class ForegroundRipple {
   state = ForegroundRippleState.NEW;
@@ -36,25 +37,37 @@ const distanceToFurthestCorner = (x: number, y: number, rect: ClientRect) => {
  * The constructor takes a reference to the ripple directive's host element and a map of DOM
  * event handlers to be installed on the element that triggers ripple animations.
  * This will eventually become a custom renderer once Angular support exists.
- * TODO: internal
+ * @docs-private
  */
 export class RippleRenderer {
   private _backgroundDiv: HTMLElement;
   private _rippleElement: HTMLElement;
   private _triggerElement: HTMLElement;
+  _opacity: string;
 
-  constructor(_elementRef: ElementRef, private _eventHandlers: Map<string, (e: Event) => void>) {
+  constructor(_elementRef: ElementRef,
+              private _eventHandlers: Map<string, (e: Event) => void>,
+              private _ngZone: NgZone) {
     this._rippleElement = _elementRef.nativeElement;
-    // It might be nice to delay creating the background until it's needed, but doing this in
-    // fadeInRippleBackground causes the first click event to not be handled reliably.
-    this._backgroundDiv = document.createElement('div');
-    this._backgroundDiv.classList.add('md-ripple-background');
-    this._rippleElement.appendChild(this._backgroundDiv);
+    // The background div is created in createBackgroundIfNeeded when the ripple becomes enabled.
+    // This avoids creating unneeded divs when the ripple is always disabled.
+    this._backgroundDiv = null;
+  }
+
+  /** Creates the div for the ripple background, if it doesn't already exist. */
+  createBackgroundIfNeeded() {
+    if (!this._backgroundDiv) {
+      this._backgroundDiv = document.createElement('div');
+      this._backgroundDiv.classList.add('md-ripple-background');
+      this._rippleElement.appendChild(this._backgroundDiv);
+    }
   }
 
   /**
    * Installs event handlers on the given trigger element, and removes event handlers from the
    * previous trigger if needed.
+   *
+   * @param newTrigger New trigger to which to attach the ripple handlers.
    */
   setTriggerElement(newTrigger: HTMLElement) {
     if (this._triggerElement !== newTrigger) {
@@ -72,16 +85,12 @@ export class RippleRenderer {
     }
   }
 
-  /**
-   * Installs event handlers on the host element of the md-ripple directive.
-   */
+  /** Installs event handlers on the host element of the md-ripple directive. */
   setTriggerElementToHost() {
     this.setTriggerElement(this._rippleElement);
   }
 
-  /**
-   * Removes event handlers from the current trigger element if needed.
-   */
+  /** Removes event handlers from the current trigger element if needed. */
   clearTriggerElement() {
     this.setTriggerElement(null);
   }
@@ -90,6 +99,14 @@ export class RippleRenderer {
    * Creates a foreground ripple and sets its animation to expand and fade in from the position
    * given by rippleOriginLeft and rippleOriginTop (or from the center of the <md-ripple>
    * bounding rect if centered is true).
+   *
+   * @param rippleOriginLeft Left origin of the ripple.
+   * @param rippleOriginTop Top origin of the ripple.
+   * @param color Ripple color.
+   * @param centered Whether the ripple should be centered.
+   * @param radius Radius of the ripple.
+   * @param speedFactor Speed at which the ripple expands towards the edges.
+   * @param transitionEndCallback Callback to be triggered when the ripple transition is done.
    */
   createForegroundRipple(
       rippleOriginLeft: number,
@@ -128,7 +145,8 @@ export class RippleRenderer {
     rippleDiv.style.transitionDuration = `${fadeInSeconds}s`;
 
     // https://timtaubert.de/blog/2012/09/css-transitions-for-dynamically-created-dom-elements/
-    window.getComputedStyle(rippleDiv).opacity;
+    // Store the opacity to prevent this line as being seen as a no-op by optimizers.
+    this._opacity = window.getComputedStyle(rippleDiv).opacity;
 
     rippleDiv.classList.add('md-ripple-fade-in');
     // Clearing the transform property causes the ripple to animate to its full size.
@@ -138,10 +156,21 @@ export class RippleRenderer {
 
     rippleDiv.addEventListener('transitionend',
         (event: TransitionEvent) => transitionEndCallback(ripple, event));
+    // Ensure that ripples are always removed, even when transitionend doesn't fire.
+    // Run this outside the Angular zone because there's nothing that Angular cares about.
+    // If it were to run inside the Angular zone, every test that used ripples would have to be
+    // either async or fakeAsync.
+    this._ngZone.runOutsideAngular(() => {
+      // The ripple lasts a time equal to the sum of fade-in, transform,
+      // and fade-out (3 * fade-in time).
+      let rippleDuration =  fadeInSeconds * 3 * 1000;
+      setTimeout(() => this.removeRippleFromDom(ripple.rippleElement), rippleDuration);
+    });
   }
 
   /**
    * Fades out a foreground ripple after it has fully expanded and faded in.
+   * @param ripple Ripple to be faded out.
    */
   fadeOutForegroundRipple(ripple: Element) {
     ripple.classList.remove('md-ripple-fade-in');
@@ -150,13 +179,17 @@ export class RippleRenderer {
 
   /**
    * Removes a foreground ripple from the DOM after it has faded out.
+   * @param ripple Ripple to be removed from the DOM.
    */
   removeRippleFromDom(ripple: Element) {
-    ripple.parentElement.removeChild(ripple);
+    if (ripple && ripple.parentElement) {
+      ripple.parentElement.removeChild(ripple);
+    }
   }
 
   /**
    * Fades in the ripple background.
+   * @param color New background color for the ripple.
    */
   fadeInRippleBackground(color: string) {
     this._backgroundDiv.classList.add('md-ripple-active');
@@ -164,9 +197,7 @@ export class RippleRenderer {
     this._backgroundDiv.style.backgroundColor = color;
   }
 
-  /**
-   * Fades out the ripple background.
-   */
+  /** Fades out the ripple background. */
   fadeOutRippleBackground() {
     if (this._backgroundDiv) {
       this._backgroundDiv.classList.remove('md-ripple-active');

@@ -1,12 +1,20 @@
 import {
-    NgModule,
-    ModuleWithProviders,
-    Component,
-    Directive,
-    Input,
-    ElementRef,
-    ViewContainerRef,
-    ChangeDetectorRef
+  NgModule,
+  ModuleWithProviders,
+  Component,
+  Directive,
+  Input,
+  ElementRef,
+  ViewContainerRef,
+  style,
+  trigger,
+  state,
+  transition,
+  animate,
+  AnimationTransitionEvent,
+  NgZone,
+  Optional,
+  OnDestroy
 } from '@angular/core';
 import {
   Overlay,
@@ -16,228 +24,371 @@ import {
   ComponentPortal,
   OverlayConnectionPosition,
   OriginConnectionPosition,
-  OVERLAY_PROVIDERS,
+  DefaultStyleCompatibilityModeModule
 } from '../core';
+import {MdTooltipInvalidPositionError} from './tooltip-errors';
+import {Observable} from 'rxjs/Observable';
+import {Subject} from 'rxjs/Subject';
+import {Dir} from '../core/rtl/dir';
+import 'rxjs/add/operator/first';
 
-export type TooltipPosition = 'before' | 'after' | 'above' | 'below';
+export type TooltipPosition = 'left' | 'right' | 'above' | 'below' | 'before' | 'after';
 
+/** Time in ms to delay before changing the tooltip visibility to hidden */
+export const TOUCHEND_HIDE_DELAY  = 1500;
+
+/**
+ * Directive that attaches a material design tooltip to the host element. Animates the showing and
+ * hiding of a tooltip provided position (defaults to below the element).
+ *
+ * https://material.google.com/components/tooltips.html
+ */
 @Directive({
-  selector: '[md-tooltip]',
+  selector: '[md-tooltip], [mat-tooltip], [mdTooltip]',
   host: {
-    '(mouseenter)': '_handleMouseEnter($event)',
-    '(mouseleave)': '_handleMouseLeave($event)',
-  }
+    '(longpress)': 'show()',
+    '(touchend)': 'hide(' + TOUCHEND_HIDE_DELAY + ')',
+    '(mouseenter)': 'show()',
+    '(mouseleave)': 'hide()',
+  },
+  exportAs: 'mdTooltip',
 })
-export class MdTooltip {
-  visible: boolean = false;
+export class MdTooltip implements OnDestroy {
+  _overlayRef: OverlayRef;
+  _tooltipInstance: TooltipComponent;
+
+  private _position: TooltipPosition = 'below';
 
   /** Allows the user to define the position of the tooltip relative to the parent element */
-  private _position: TooltipPosition = 'below';
-  @Input('tooltip-position') get position(): TooltipPosition {
-    return this._position;
-  }
+  @Input('mdTooltipPosition')
+  get position(): TooltipPosition { return this._position; }
   set position(value: TooltipPosition) {
     if (value !== this._position) {
       this._position = value;
-      this._updatePosition();
+
+      // TODO(andrewjs): When the overlay's position can be dynamically changed, do not destroy
+      // the tooltip.
+      if (this._tooltipInstance) {
+        this._disposeTooltip();
+      }
     }
   }
+
+  /** @deprecated */
+  @Input('tooltip-position')
+  get _positionDeprecated(): TooltipPosition { return this._position; }
+  set _positionDeprecated(value: TooltipPosition) { this._position = value; }
+
+  /** The default delay in ms before showing the tooltip after show is called */
+  @Input('mdTooltipShowDelay') showDelay = 0;
+
+  /** The default delay in ms before hiding the tooltip after hide is called */
+  @Input('mdTooltipHideDelay') hideDelay = 0;
+
+  private _message: string;
 
   /** The message to be displayed in the tooltip */
-  private _message: string;
-  @Input('md-tooltip') get message() {
-    return this._message;
-  }
+  @Input('mdTooltip') get message() { return this._message; }
   set message(value: string) {
     value = value.replace(/\r\n|\r|\n/g, '<br>');
-    if (this.message) {
-      let showAfterChange = false;
-      if (this.visible) {
-        this.hide();
-        showAfterChange = true;
-      }
-      setTimeout(
-        () => {
-          this._message = value;
-          this._updatePosition();
-          if (showAfterChange) {
-            this.show();
-          }
-        },
-        0
-      )
-    }
-    else {
-      this._message = value;
-      this._updatePosition();
+    this._message = value;
+    if (this._tooltipInstance) {
+      this._setTooltipMessage(this._message);
     }
   }
 
-  private _overlayRef: OverlayRef;
+  /** @deprecated */
+  @Input('md-tooltip')
+  get _deprecatedMessage(): string { return this.message; }
+  set _deprecatedMessage(v: string) { this.message = v; }
 
-  constructor(private _overlay: Overlay, private _elementRef: ElementRef,
-      private _viewContainerRef: ViewContainerRef,
-      private _changeDetectionRef: ChangeDetectorRef) {}
+  constructor(private _overlay: Overlay,
+              private _elementRef: ElementRef,
+              private _viewContainerRef: ViewContainerRef,
+              private _ngZone: NgZone,
+              @Optional() private _dir: Dir) { }
 
   /**
-   * Create overlay on init
-   * TODO: internal
+   * Dispose the tooltip when destroyed.
    */
-  ngOnInit() {
-  }
-
   ngOnDestroy() {
-    if (this._overlayRef) {
-      this._overlayRef.dispose();
-      this._overlayRef = null;
+    if (this._tooltipInstance) {
+      this._disposeTooltip();
     }
   }
 
-  /**
-   * Create the overlay config and position strategy
-   */
-  private _createOverlay(wnd: Window) {
-    if (this._overlayRef) {
-      if (this.visible) {
-        // if visible, hide before destroying
-        this.hide();
-        this._createOverlay(wnd);
-      } else {
-        // if not visible, dispose and recreate
-        this._overlayRef.dispose();
-        this._overlayRef = null;
-        this._createOverlay(wnd);
-      }
-    } else {
-      let origin = this._getOrigin();
-      let position = this._getOverlayPosition();
-      let strategy = this._overlay.position().connectedTo(this._elementRef, origin, position);
-      let config = new OverlayState();
-      config.positionStrategy = strategy;
-      this._overlayRef = this._overlay.create(config, this._createOverlayContainer(wnd));
+  /** Shows the tooltip after the delay in ms, defaults to tooltip-delay-show or 0ms if no input */
+  show(delay: number = this.showDelay): void {
+    if (!this._message || !this._message.trim()) { return; }
+
+    if (!this._tooltipInstance) {
+      this._createTooltip();
+    }
+
+    this._setTooltipMessage(this._message);
+    this._tooltipInstance.show(this._position, delay);
+  }
+
+  /** Hides the tooltip after the delay in ms, defaults to tooltip-delay-hide or 0ms if no input */
+  hide(delay: number = this.hideDelay): void {
+    if (this._tooltipInstance) {
+      this._tooltipInstance.hide(delay);
     }
   }
 
-  private _createOverlayContainer(wnd: Window): Element {
-    let overlayContainerElement: Element = wnd.document.body.querySelector('.md-overlay-container');
-    if (!overlayContainerElement) {
-      overlayContainerElement = wnd.document.createElement('div');
-      overlayContainerElement.classList.add('md-overlay-container');
-      wnd.document.body.appendChild(overlayContainerElement);
-    }
-    return overlayContainerElement;
-  }
-
-  /**
-   * Returns the origin position based on the user's position preference
-   */
-  private _getOrigin(): OriginConnectionPosition {
-    switch (this.position) {
-      case 'before': return { originX: 'start', originY: 'center' };
-      case 'after':  return { originX: 'end', originY: 'center' };
-      case 'above':  return { originX: 'center', originY: 'top' };
-      case 'below':  return { originX: 'center', originY: 'bottom' };
-    }
-  }
-
-  /**
-   * Returns the overlay position based on the user's preference
-   */
-  private _getOverlayPosition(): OverlayConnectionPosition {
-    switch (this.position) {
-      case 'before': return { overlayX: 'end', overlayY: 'center' };
-      case 'after':  return { overlayX: 'start', overlayY: 'center' };
-      case 'above':  return { overlayX: 'center', overlayY: 'bottom' };
-      case 'below':  return { overlayX: 'center', overlayY: 'top' };
-    }
-  }
-
-  /**
-   * Shows the tooltip on mouse enter
-   * @param event
-   */
-  _handleMouseEnter(event: MouseEvent) {
-    this._createOverlay(event.view);
-    this.show();
-  }
-
-  /**
-   * Hides the tooltip on mouse leave
-   * @param event
-   */
-  _handleMouseLeave(event: MouseEvent) {
-    this.hide();
-    this.ngOnDestroy();
-  }
-
-  /**
-   * Shows the tooltip and returns a promise that will resolve when the tooltip is visible
-   */
-  show(): void {
-    if (!this.visible && this._overlayRef && !this._overlayRef.hasAttached()) {
-      this.visible = true;
-
-      let portal = new ComponentPortal(TooltipComponent, this._viewContainerRef);
-      let tooltipRef = this._overlayRef.attach(portal);
-      tooltipRef.instance.message = this.message;
-      this._updatePosition();
-    }
-  }
-
-  /**
-   * Hides the tooltip and returns a promise that will resolve when the tooltip is hidden
-   */
-  hide(): void {
-    if (this.visible && this._overlayRef && this._overlayRef.hasAttached()) {
-      this.visible = false;
-      this._overlayRef.detach();
-    }
-  }
-
-  /**
-   * Shows/hides the tooltip and returns a promise that will resolve when it is done
-   */
+  /** Shows/hides the tooltip */
   toggle(): void {
-    if (this.visible) {
-      this.hide();
-    } else {
-      this.show();
-    }
+    this._isTooltipVisible() ? this.hide() : this.show();
   }
 
-  /**
-   * Updates the tooltip's position
-   */
-  private _updatePosition() {
-    if (this._overlayRef) {
-      this._changeDetectionRef.detectChanges();
-      this._overlayRef.updatePosition();
+  /** Returns true if the tooltip is currently visible to the user */
+  _isTooltipVisible(): boolean {
+    return this._tooltipInstance && this._tooltipInstance.isVisible();
+  }
+
+  /** Create the tooltip to display */
+  private _createTooltip(): void {
+    this._createOverlay();
+    let portal = new ComponentPortal(TooltipComponent, this._viewContainerRef);
+    this._tooltipInstance = this._overlayRef.attach(portal).instance;
+
+    // Dispose the overlay when finished the shown tooltip.
+    this._tooltipInstance.afterHidden().subscribe(() => {
+      // Check first if the tooltip has already been removed through this components destroy.
+      if (this._tooltipInstance) {
+        this._disposeTooltip();
+      }
+    });
+  }
+
+  /** Create the overlay config and position strategy */
+  private _createOverlay(): void {
+    let origin = this._getOrigin();
+    let position = this._getOverlayPosition();
+    let strategy = this._overlay.position().connectedTo(this._elementRef, origin, position);
+    let config = new OverlayState();
+    config.positionStrategy = strategy;
+
+    this._overlayRef = this._overlay.create(config);
+  }
+
+  /** Disposes the current tooltip and the overlay it is attached to */
+  private _disposeTooltip(): void {
+    this._overlayRef.dispose();
+    this._overlayRef = null;
+    this._tooltipInstance = null;
+  }
+
+  /** Returns the origin position based on the user's position preference */
+  _getOrigin(): OriginConnectionPosition {
+    if (this.position == 'above' || this.position == 'below') {
+      return {originX: 'center', originY: this.position == 'above' ? 'top' : 'bottom'};
     }
+
+    const isDirectionLtr = !this._dir || this._dir.value == 'ltr';
+    if (this.position == 'left' ||
+        this.position == 'before' && isDirectionLtr ||
+        this.position == 'after' && !isDirectionLtr) {
+      return {originX: 'start', originY: 'center'};
+    }
+
+    if (this.position == 'right' ||
+        this.position == 'after' && isDirectionLtr ||
+        this.position == 'before' && !isDirectionLtr) {
+      return {originX: 'end', originY: 'center'};
+    }
+
+    throw new MdTooltipInvalidPositionError(this.position);
+  }
+
+  /** Returns the overlay position based on the user's preference */
+  _getOverlayPosition(): OverlayConnectionPosition {
+    if (this.position == 'above') {
+      return {overlayX: 'center', overlayY: 'bottom'};
+    }
+
+    if (this.position == 'below') {
+      return {overlayX: 'center', overlayY: 'top'};
+    }
+
+    const isLtr = !this._dir || this._dir.value == 'ltr';
+    if (this.position == 'left' ||
+        this.position == 'before' && isLtr ||
+        this.position == 'after' && !isLtr) {
+      return {overlayX: 'end', overlayY: 'center'};
+    }
+
+    if (this.position == 'right' ||
+        this.position == 'after' && isLtr ||
+        this.position == 'before' && !isLtr) {
+      return {overlayX: 'start', overlayY: 'center'};
+    }
+
+    throw new MdTooltipInvalidPositionError(this.position);
+  }
+
+  /** Updates the tooltip message and repositions the overlay according to the new message length */
+  private _setTooltipMessage(message: string) {
+    // Must wait for the message to be painted to the tooltip so that the overlay can properly
+    // calculate the correct positioning based on the size of the text.
+    this._tooltipInstance.message = message;
+    this._ngZone.onMicrotaskEmpty.first().subscribe(() => {
+      if (this._tooltipInstance) {
+        this._overlayRef.updatePosition();
+      }
+    });
   }
 }
 
+export type TooltipVisibility = 'initial' | 'visible' | 'hidden';
+
+/**
+ * Internal component that wraps the tooltip's content.
+ * @docs-private
+ */
 @Component({
   moduleId: module.id,
-  selector: 'md-tooltip-component',
-  template: `<div class="md-tooltip" [innerHTML]="message"></div>`,
+  selector: 'md-tooltip-component, mat-tooltip-component',
+  templateUrl: 'tooltip.html',
   styleUrls: ['tooltip.css'],
+  animations: [
+    trigger('state', [
+      state('void', style({transform: 'scale(0)'})),
+      state('initial', style({transform: 'scale(0)'})),
+      state('visible', style({transform: 'scale(1)'})),
+      state('hidden', style({transform: 'scale(0)'})),
+      transition('* => visible', animate('150ms cubic-bezier(0.0, 0.0, 0.2, 1)')),
+      transition('* => hidden', animate('150ms cubic-bezier(0.4, 0.0, 1, 1)')),
+    ])
+  ],
+  host: {
+    '(body:click)': 'this._handleBodyInteraction()'
+  }
 })
 export class TooltipComponent {
+  /** Message to display in the tooltip */
   message: string;
+
+  /** The timeout ID of any current timer set to show the tooltip */
+  _showTimeoutId: number;
+
+  /** The timeout ID of any current timer set to hide the tooltip */
+  _hideTimeoutId: number;
+
+  /** Property watched by the animation framework to show or hide the tooltip */
+  _visibility: TooltipVisibility = 'initial';
+
+  /** Whether interactions on the page should close the tooltip */
+  _closeOnInteraction: boolean = false;
+
+  /** The transform origin used in the animation for showing and hiding the tooltip */
+  _transformOrigin: string = 'bottom';
+
+  /** Subject for notifying that the tooltip has been hidden from the view */
+  private _onHide: Subject<any> = new Subject();
+
+  constructor(@Optional() private _dir: Dir) {}
+
+  /**
+   * Shows the tooltip with an animation originating from the provided origin
+   * @param position Position of the tooltip.
+   * @param delay Amount of milliseconds to the delay showing the tooltip.
+   */
+  show(position: TooltipPosition, delay: number): void {
+    // Cancel the delayed hide if it is scheduled
+    if (this._hideTimeoutId) {
+      clearTimeout(this._hideTimeoutId);
+    }
+
+    // Body interactions should cancel the tooltip if there is a delay in showing.
+    this._closeOnInteraction = true;
+
+    this._setTransformOrigin(position);
+    this._showTimeoutId = setTimeout(() => {
+      this._visibility = 'visible';
+
+      // If this was set to true immediately, then a body click that triggers show() would
+      // trigger interaction and close the tooltip right after it was displayed.
+      this._closeOnInteraction = false;
+      setTimeout(() => { this._closeOnInteraction = true; }, 0);
+    }, delay);
+  }
+
+  /**
+   * Begins the animation to hide the tooltip after the provided delay in ms.
+   * @param delay Amount of milliseconds to delay showing the tooltip.
+   */
+  hide(delay: number): void {
+    // Cancel the delayed show if it is scheduled
+    if (this._showTimeoutId) {
+      clearTimeout(this._showTimeoutId);
+    }
+
+    this._hideTimeoutId = setTimeout(() => {
+      this._visibility = 'hidden';
+      this._closeOnInteraction = false;
+    }, delay);
+  }
+
+  /**
+   * Returns an observable that notifies when the tooltip has been hidden from view
+   */
+  afterHidden(): Observable<void> {
+    return this._onHide.asObservable();
+  }
+
+  /**
+   * Whether the tooltip is being displayed
+   */
+  isVisible(): boolean {
+    return this._visibility === 'visible';
+  }
+
+  /** Sets the tooltip transform origin according to the tooltip position */
+  _setTransformOrigin(value: TooltipPosition) {
+    const isLtr = !this._dir || this._dir.value == 'ltr';
+    switch (value) {
+      case 'before': this._transformOrigin = isLtr ? 'right' : 'left'; break;
+      case 'after':  this._transformOrigin = isLtr ? 'left' : 'right'; break;
+      case 'left':   this._transformOrigin = 'right'; break;
+      case 'right':  this._transformOrigin = 'left'; break;
+      case 'above':    this._transformOrigin = 'bottom'; break;
+      case 'below': this._transformOrigin = 'top'; break;
+      default: throw new MdTooltipInvalidPositionError(value);
+    }
+  }
+
+  _afterVisibilityAnimation(e: AnimationTransitionEvent): void {
+    if (e.toState === 'hidden' && !this.isVisible()) {
+      this._onHide.next();
+    }
+  }
+
+  /**
+   * Interactions on the HTML body should close the tooltip immediately as defined in the
+   * material design spec.
+   * https://material.google.com/components/tooltips.html#tooltips-interaction
+   */
+  _handleBodyInteraction(): void {
+    if (this._closeOnInteraction) {
+      this.hide(0);
+    }
+  }
 }
 
 
 @NgModule({
-  imports: [OverlayModule],
-  exports: [MdTooltip, TooltipComponent],
+  imports: [OverlayModule, DefaultStyleCompatibilityModeModule],
+  exports: [MdTooltip, TooltipComponent, DefaultStyleCompatibilityModeModule],
   declarations: [MdTooltip, TooltipComponent],
   entryComponents: [TooltipComponent],
 })
 export class MdTooltipModule {
+  /** @deprecated */
   static forRoot(): ModuleWithProviders {
     return {
       ngModule: MdTooltipModule,
-      providers: OVERLAY_PROVIDERS,
+      providers: []
     };
   }
 }

@@ -82,6 +82,16 @@ describe('Overlay', () => {
     expect(overlayContainerElement.textContent).toBe('');
   });
 
+  it('should set the direction', () => {
+    const state = new OverlayState();
+    state.direction = 'rtl';
+
+    overlay.create(state).attach(componentPortal);
+
+    const pane = overlayContainerElement.children[0] as HTMLElement;
+    expect(pane.getAttribute('dir')).toEqual('rtl');
+  });
+
   describe('positioning', () => {
     let state: OverlayState;
 
@@ -98,18 +108,91 @@ describe('Overlay', () => {
     });
   });
 
-  describe('backdrop', () => {
-    it('should create and destroy an overlay backdrop', () => {
-      let config = new OverlayState();
-      config.hasBackdrop = true;
+  describe('size', () => {
+    let state: OverlayState;
 
+    beforeEach(() => {
+      state = new OverlayState();
+    });
+
+    it('should apply the width set in the config', () => {
+      state.width = 500;
+
+      overlay.create(state).attach(componentPortal);
+      const pane = overlayContainerElement.children[0] as HTMLElement;
+      expect(pane.style.width).toEqual('500px');
+    });
+
+    it('should support using other units if a string width is provided', () => {
+      state.width = '200%';
+
+      overlay.create(state).attach(componentPortal);
+      const pane = overlayContainerElement.children[0] as HTMLElement;
+      expect(pane.style.width).toEqual('200%');
+    });
+
+    it('should apply the height set in the config', () => {
+      state.height = 500;
+
+      overlay.create(state).attach(componentPortal);
+      const pane = overlayContainerElement.children[0] as HTMLElement;
+      expect(pane.style.height).toEqual('500px');
+    });
+
+    it('should support using other units if a string height is provided', () => {
+      state.height = '100vh';
+
+      overlay.create(state).attach(componentPortal);
+      const pane = overlayContainerElement.children[0] as HTMLElement;
+      expect(pane.style.height).toEqual('100vh');
+    });
+
+    it('should apply the min width set in the config', () => {
+      state.minWidth = 200;
+
+      overlay.create(state).attach(componentPortal);
+      const pane = overlayContainerElement.children[0] as HTMLElement;
+      expect(pane.style.minWidth).toEqual('200px');
+    });
+
+
+    it('should apply the min height set in the config', () => {
+      state.minHeight = 500;
+
+      overlay.create(state).attach(componentPortal);
+      const pane = overlayContainerElement.children[0] as HTMLElement;
+      expect(pane.style.minHeight).toEqual('500px');
+    });
+
+
+    it('should support zero widths and heights', () => {
+      state.width = 0;
+      state.height = 0;
+
+      overlay.create(state).attach(componentPortal);
+      const pane = overlayContainerElement.children[0] as HTMLElement;
+      expect(pane.style.width).toEqual('0px');
+      expect(pane.style.height).toEqual('0px');
+    });
+
+  });
+
+  describe('backdrop', () => {
+    let config: OverlayState;
+
+    beforeEach(() => {
+      config = new OverlayState();
+      config.hasBackdrop = true;
+    });
+
+    it('should create and destroy an overlay backdrop', () => {
       let overlayRef = overlay.create(config);
       overlayRef.attach(componentPortal);
 
       viewContainerFixture.detectChanges();
-      let backdrop = <HTMLElement> overlayContainerElement.querySelector('.md-overlay-backdrop');
+      let backdrop = overlayContainerElement.querySelector('.cdk-overlay-backdrop') as HTMLElement;
       expect(backdrop).toBeTruthy();
-      expect(backdrop.classList).not.toContain('.md-overlay-backdrop-showing');
+      expect(backdrop.classList).not.toContain('cdk-overlay-backdrop-showing');
 
       let backdropClickHandler = jasmine.createSpy('backdropClickHander');
       overlayRef.backdropClick().subscribe(backdropClickHandler);
@@ -117,6 +200,57 @@ describe('Overlay', () => {
       backdrop.click();
       expect(backdropClickHandler).toHaveBeenCalled();
     });
+
+    it('should apply the default overlay backdrop class', () => {
+      let overlayRef = overlay.create(config);
+      overlayRef.attach(componentPortal);
+      viewContainerFixture.detectChanges();
+
+      let backdrop = overlayContainerElement.querySelector('.cdk-overlay-backdrop') as HTMLElement;
+      expect(backdrop.classList).toContain('cdk-overlay-dark-backdrop');
+    });
+
+    it('should apply a custom overlay backdrop class', () => {
+      config.backdropClass = 'cdk-overlay-transparent-backdrop';
+
+      let overlayRef = overlay.create(config);
+      overlayRef.attach(componentPortal);
+      viewContainerFixture.detectChanges();
+
+      let backdrop = overlayContainerElement.querySelector('.cdk-overlay-backdrop') as HTMLElement;
+      expect(backdrop.classList).toContain('cdk-overlay-transparent-backdrop');
+    });
+
+    it('should disable the pointer events of a backdrop that is being removed', () => {
+      let overlayRef = overlay.create(config);
+      overlayRef.attach(componentPortal);
+
+      viewContainerFixture.detectChanges();
+      let backdrop = overlayContainerElement.querySelector('.cdk-overlay-backdrop') as HTMLElement;
+
+      expect(backdrop.style.pointerEvents).toBeFalsy();
+
+      overlayRef.detach();
+
+      expect(backdrop.style.pointerEvents).toBe('none');
+    });
+
+    it('should insert the backdrop before the overlay pane in the DOM order', () => {
+      let overlayRef = overlay.create(config);
+      overlayRef.attach(componentPortal);
+
+      viewContainerFixture.detectChanges();
+
+      let backdrop = overlayContainerElement.querySelector('.cdk-overlay-backdrop');
+      let pane = overlayContainerElement.querySelector('.cdk-overlay-pane');
+      let children = Array.prototype.slice.call(overlayContainerElement.children);
+
+      expect(children.indexOf(backdrop)).toBeGreaterThan(-1);
+      expect(children.indexOf(pane)).toBeGreaterThan(-1);
+      expect(children.indexOf(backdrop))
+        .toBeLessThan(children.indexOf(pane), 'Expected backdrop to be before the pane in the DOM');
+    });
+
   });
 });
 
@@ -127,7 +261,7 @@ class PizzaMsg { }
 
 
 /** Test-bed component that contains a TempatePortal and an ElementRef. */
-@Component({template: `<template portal>Cake</template>`})
+@Component({template: `<template cdk-portal>Cake</template>`})
 class TestComponentWithTemplatePortals {
   @ViewChild(TemplatePortalDirective) templatePortal: TemplatePortalDirective;
 
@@ -151,5 +285,6 @@ class FakePositionStrategy implements PositionStrategy {
     return Promise.resolve();
   }
 
+  dispose() {}
 }
 

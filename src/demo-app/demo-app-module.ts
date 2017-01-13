@@ -1,21 +1,23 @@
 import {NgModule, ApplicationRef} from '@angular/core';
 import {BrowserModule} from '@angular/platform-browser';
 import {HttpModule} from '@angular/http';
-import {FormsModule} from '@angular/forms';
+import {FormsModule, ReactiveFormsModule} from '@angular/forms';
 import {DemoApp, Home} from './demo-app/demo-app';
 import {RouterModule} from '@angular/router';
-import {MaterialModule} from '@angular/material';
+import {MaterialModule, OverlayContainer,
+  FullscreenOverlayContainer} from '@angular/material';
 import {DEMO_APP_ROUTES} from './demo-app/routes';
 import {ProgressBarDemo} from './progress-bar/progress-bar-demo';
-import {JazzDialog, DialogDemo} from './dialog/dialog-demo';
+import {JazzDialog, ContentElementDialog, DialogDemo} from './dialog/dialog-demo';
 import {RippleDemo} from './ripple/ripple-demo';
 import {IconDemo} from './icon/icon-demo';
 import {GesturesDemo} from './gestures/gestures-demo';
 import {InputDemo} from './input/input-demo';
 import {CardDemo} from './card/card-demo';
+import {ChipsDemo} from './chips/chips-demo';
 import {RadioDemo} from './radio/radio-demo';
 import {ButtonToggleDemo} from './button-toggle/button-toggle-demo';
-import {ProgressCircleDemo} from './progress-circle/progress-circle-demo';
+import {ProgressSpinnerDemo} from './progress-spinner/progress-spinner-demo';
 import {TooltipDemo} from './tooltip/tooltip-demo';
 import {ListDemo} from './list/list-demo';
 import {BaselineDemo} from './baseline/baseline-demo';
@@ -32,23 +34,28 @@ import {SidenavDemo} from './sidenav/sidenav-demo';
 import {SnackBarDemo} from './snack-bar/snack-bar-demo';
 import {PortalDemo, ScienceJoke} from './portal/portal-demo';
 import {MenuDemo} from './menu/menu-demo';
-import {TabsDemo} from './tabs/tab-group-demo';
-
-
+import {TabsDemo, SunnyTabContent, RainyTabContent, FoggyTabContent} from './tabs/tabs-demo';
+import {ProjectionDemo, ProjectionTestComponent} from './projection/projection-demo';
+import {PlatformDemo} from './platform/platform-demo';
+import {AutocompleteDemo} from './autocomplete/autocomplete-demo';
+import {InputContainerDemo} from './input/input-container-demo';
 
 @NgModule({
   imports: [
     BrowserModule,
     FormsModule,
     HttpModule,
+    ReactiveFormsModule,
     RouterModule.forRoot(DEMO_APP_ROUTES),
     MaterialModule.forRoot(),
   ],
   declarations: [
+    AutocompleteDemo,
     BaselineDemo,
     ButtonDemo,
     ButtonToggleDemo,
     CardDemo,
+    ChipsDemo,
     CheckboxDemo,
     DemoApp,
     DialogDemo,
@@ -57,7 +64,9 @@ import {TabsDemo} from './tabs/tab-group-demo';
     Home,
     IconDemo,
     InputDemo,
+    InputContainerDemo,
     JazzDialog,
+    ContentElementDialog,
     ListDemo,
     LiveAnnouncerDemo,
     MdCheckboxDemoNestedChecklist,
@@ -66,7 +75,9 @@ import {TabsDemo} from './tabs/tab-group-demo';
     OverlayDemo,
     PortalDemo,
     ProgressBarDemo,
-    ProgressCircleDemo,
+    ProgressSpinnerDemo,
+    ProjectionDemo,
+    ProjectionTestComponent,
     RadioDemo,
     RippleDemo,
     RotiniPanel,
@@ -76,13 +87,21 @@ import {TabsDemo} from './tabs/tab-group-demo';
     SliderDemo,
     SlideToggleDemo,
     SpagettiPanel,
-    TabsDemo,
     ToolbarDemo,
     TooltipDemo,
+    TabsDemo,
+    SunnyTabContent,
+    RainyTabContent,
+    FoggyTabContent,
+    PlatformDemo
+  ],
+  providers: [
+    {provide: OverlayContainer, useClass: FullscreenOverlayContainer}
   ],
   entryComponents: [
     DemoApp,
     JazzDialog,
+    ContentElementDialog,
     RotiniPanel,
     ScienceJoke,
     SpagettiPanel,

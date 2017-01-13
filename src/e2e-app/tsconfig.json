@@ -12,20 +12,16 @@
     "outDir": "../../dist/",
     "sourceMap": true,
     "target": "es5",
-    "stripInternal": true,
+    "stripInternal": false,
     "baseUrl": "",
     "typeRoots": [
-      "../../node_modules/@types",
-      "../../node_modules"
+      "../../node_modules/@types/!(node)"
     ],
     "paths": {
       "@angular/material": [
         "../../dist/@angular/material"
       ]
-    },
-    "types": [
-      "hammerjs"
-    ]
+    }
   },
   "angularCompilerOptions": {
     "genDir": "../../dist",
