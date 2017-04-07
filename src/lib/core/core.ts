@@ -3,10 +3,11 @@ import {MdLineModule} from './line/line';
 import {RtlModule} from './rtl/dir';
 import {ObserveContentModule} from './observe-content/observe-content';
 import {MdOptionModule} from './option/option';
-import {MdRippleModule} from './ripple/ripple';
 import {PortalModule} from './portal/portal-directives';
 import {OverlayModule} from './overlay/overlay-directives';
 import {A11yModule} from './a11y/index';
+import {MdSelectionModule} from './selection/index';
+import {MdRippleModule} from './ripple/index';
 
 
 // RTL
@@ -32,14 +33,8 @@ export {
 } from './portal/portal-directives';
 export {DomPortalHost} from './portal/dom-portal-host';
 
-// Projection
-export * from './projection/projection';
-
 // Platform
 export * from './platform/index';
-
-/** @deprecated */
-export {Platform as MdPlatform} from './platform/platform';
 
 // Overlay
 export {Overlay, OVERLAY_PROVIDERS} from './overlay/overlay';
@@ -52,6 +47,7 @@ export {
   OverlayOrigin,
   OverlayModule,
 } from './overlay/overlay-directives';
+export * from './overlay/position/global-position-strategy';
 export * from './overlay/position/connected-position-strategy';
 export * from './overlay/position/connected-position';
 export {ScrollDispatcher} from './overlay/scroll/scroll-dispatcher';
@@ -63,7 +59,7 @@ export {GestureConfig} from './gestures/gesture-config';
 export {HammerInput, HammerManager} from './gestures/gesture-annotations';
 
 // Ripple
-export {MdRipple, MdRippleModule} from './ripple/ripple';
+export * from './ripple/index';
 
 // a11y
 export {
@@ -72,10 +68,11 @@ export {
   LIVE_ANNOUNCER_ELEMENT_TOKEN,
   LIVE_ANNOUNCER_PROVIDER,
 } from './a11y/live-announcer';
-/** @deprecated */
-export {LiveAnnouncer as MdLiveAnnouncer} from './a11y/live-announcer';
 
-export {FocusTrap} from './a11y/focus-trap';
+// Selection
+export * from './selection/selection';
+
+export * from './a11y/focus-trap';
 export {InteractivityChecker} from './a11y/interactivity-checker';
 export {isFakeMousedownFromScreenReader} from './a11y/fake-mousedown';
 
@@ -86,15 +83,11 @@ export {
   UniqueSelectionDispatcherListener,
   UNIQUE_SELECTION_DISPATCHER_PROVIDER,
 } from './coordination/unique-selection-dispatcher';
-/** @deprecated */
-export {
-  UniqueSelectionDispatcher as MdUniqueSelectionDispatcher
-} from './coordination/unique-selection-dispatcher';
 
 export {MdLineModule, MdLine, MdLineSetter} from './line/line';
 
 // Style
-export {applyCssTransform} from './style/apply-transform';
+export * from './style/index';
 
 // Error
 export {MdError} from './errors/error';
@@ -105,18 +98,20 @@ export {ComponentType} from './overlay/generic-component-type';
 // Keybindings
 export * from './keyboard/keycodes';
 
-export * from './compatibility/default-mode';
+export * from './compatibility/compatibility';
 
 // Animation
 export * from './animation/animation';
+
+// Selection
+export * from './selection/index';
 
 // Coercion
 export {coerceBooleanProperty} from './coercion/boolean-property';
 export {coerceNumberProperty} from './coercion/number-property';
 
 // Compatibility
-export {DefaultStyleCompatibilityModeModule} from './compatibility/default-mode';
-export {NoConflictStyleCompatibilityMode} from './compatibility/no-conflict-mode';
+export {CompatibilityModule, NoConflictStyleCompatibilityMode} from './compatibility/compatibility';
 
 
 @NgModule({
@@ -128,7 +123,8 @@ export {NoConflictStyleCompatibilityMode} from './compatibility/no-conflict-mode
     PortalModule,
     OverlayModule,
     A11yModule,
-    MdOptionModule
+    MdOptionModule,
+    MdSelectionModule,
   ],
   exports: [
     MdLineModule,
@@ -138,7 +134,8 @@ export {NoConflictStyleCompatibilityMode} from './compatibility/no-conflict-mode
     PortalModule,
     OverlayModule,
     A11yModule,
-    MdOptionModule
+    MdOptionModule,
+    MdSelectionModule,
   ],
 })
 export class MdCoreModule {

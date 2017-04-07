@@ -1,5 +1,4 @@
 import {Component} from '@angular/core';
-import {MdInput} from '@angular/material';
 
 export interface Person {
   name: string;
@@ -40,7 +39,7 @@ export class ChipsDemo {
     alert(message);
   }
 
-  add(input: MdInput): void {
+  add(input: HTMLInputElement): void {
     if (input.value && input.value.trim() != '') {
       this.people.push({ name: input.value.trim() });
       input.value = '';

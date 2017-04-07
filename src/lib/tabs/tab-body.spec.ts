@@ -1,9 +1,10 @@
 import {async, ComponentFixture, TestBed, flushMicrotasks, fakeAsync} from '@angular/core/testing';
 import {Component, ViewChild, TemplateRef, ViewContainerRef} from '@angular/core';
+import {NoopAnimationsModule} from '@angular/platform-browser/animations';
 import {LayoutDirection, Dir} from '../core/rtl/dir';
 import {TemplatePortal} from '../core/portal/portal';
 import {MdTabBody} from './tab-body';
-import {MdRippleModule} from '../core/ripple/ripple';
+import {MdRippleModule} from '../core/ripple/index';
 import {CommonModule} from '@angular/common';
 import {PortalModule} from '../core';
 
@@ -14,7 +15,7 @@ describe('MdTabBody', () => {
   beforeEach(async(() => {
     dir = 'ltr';
     TestBed.configureTestingModule({
-      imports: [CommonModule, PortalModule, MdRippleModule],
+      imports: [CommonModule, PortalModule, MdRippleModule, NoopAnimationsModule],
       declarations: [
         MdTabBody,
         SimpleTabBodyApp,
@@ -149,9 +150,9 @@ describe('MdTabBody', () => {
   describe('on centered', () => {
     let fixture: ComponentFixture<SimpleTabBodyApp>;
 
-    beforeEach(() => {
+    beforeEach(fakeAsync(() => {
       fixture = TestBed.createComponent(SimpleTabBodyApp);
-    });
+    }));
 
     it('should attach the content when centered and detach when not', fakeAsync(() => {
       fixture.componentInstance.position = 1;
@@ -168,12 +169,26 @@ describe('MdTabBody', () => {
       expect(fixture.componentInstance.mdTabBody._portalHost.hasAttached()).toBe(false);
     }));
   });
+
+  it('should toggle the canBeAnimated flag', () => {
+    let fixture: ComponentFixture<SimpleTabBodyApp>;
+    let tabBody: MdTabBody;
+
+    fixture = TestBed.createComponent(SimpleTabBodyApp);
+    tabBody = fixture.componentInstance.mdTabBody;
+
+    expect(tabBody._canBeAnimated).toBe(false);
+
+    fixture.detectChanges();
+
+    expect(tabBody._canBeAnimated).toBe(true);
+  });
 });
 
 
 @Component({
   template: `
-    <template>Tab Body Content</template>
+    <ng-template>Tab Body Content</ng-template>
     <md-tab-body [content]="content" [position]="position" [origin]="origin"></md-tab-body>
   `
 })

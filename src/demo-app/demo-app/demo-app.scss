@@ -8,10 +8,10 @@ body {
     -moz-osx-font-smoothing: grayscale;
   }
 
-  md-sidenav {
-    min-width: 15%;
+  .mat-sidenav {
+    min-width: 15vw;
 
-    [md-button] {
+    .mat-button {
       width: 100%;
       position: relative;
       bottom: 0;
@@ -21,10 +21,11 @@ body {
 
   .demo-content {
     padding: 32px;
+    box-sizing: border-box;
   }
 
-  md-toolbar {
-    md-icon {
+  .mat-toolbar {
+    .mat-icon {
       cursor: pointer;
     }
 

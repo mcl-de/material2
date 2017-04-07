@@ -1,6 +1,4 @@
 import {
-  NgModule,
-  ModuleWithProviders,
   Component,
   ViewEncapsulation,
   AfterContentChecked,
@@ -12,11 +10,11 @@ import {
   ElementRef,
   Optional,
 } from '@angular/core';
-import {MdGridTile, MdGridTileText} from './grid-tile';
+import {MdGridTile} from './grid-tile';
 import {TileCoordinator} from './tile-coordinator';
 import {TileStyler, FitTileStyler, RatioTileStyler, FixedTileStyler} from './tile-styler';
 import {MdGridListColsError} from './grid-list-errors';
-import {Dir, MdLineModule, DefaultStyleCompatibilityModeModule} from '../core';
+import {Dir} from '../core';
 import {
   coerceToString,
   coerceToNumber,
@@ -35,7 +33,8 @@ const MD_FIT_MODE = 'fit';
   templateUrl: 'grid-list.html',
   styleUrls: ['grid-list.css'],
   host: {
-    'role': 'list'
+    'role': 'list',
+    '[class.mat-grid-list]': 'true',
   },
   encapsulation: ViewEncapsulation.None,
 })
@@ -113,7 +112,7 @@ export class MdGridList implements OnInit, AfterContentChecked {
   private _setTileStyler(): void {
     if (this._rowHeight === MD_FIT_MODE) {
       this._tileStyler = new FitTileStyler();
-    } else if (this._rowHeight && this._rowHeight.match(/:/g)) {
+    } else if (this._rowHeight && this._rowHeight.indexOf(':') > -1) {
       this._tileStyler = new RatioTileStyler(this._rowHeight);
     } else {
       this._tileStyler = new FixedTileStyler(this._rowHeight);
@@ -122,16 +121,15 @@ export class MdGridList implements OnInit, AfterContentChecked {
 
   /** Computes and applies the size and position for all children grid tiles. */
   private _layoutTiles(): void {
-    let tiles = this._tiles.toArray();
-    let tracker = new TileCoordinator(this.cols, tiles);
+    let tracker = new TileCoordinator(this.cols, this._tiles);
     let direction = this._dir ? this._dir.value : 'ltr';
     this._tileStyler.init(this.gutterSize, tracker, this.cols, direction);
 
-    for (let i = 0; i < tiles.length; i++) {
-      let pos = tracker.positions[i];
-      let tile = tiles[i];
+    this._tiles.forEach((tile, index) => {
+      let pos = tracker.positions[index];
       this._tileStyler.setStyle(tile, pos.row, pos.col);
-    }
+    });
+
     this._setListStyle(this._tileStyler.getComputedHeight());
   }
 
@@ -140,27 +138,5 @@ export class MdGridList implements OnInit, AfterContentChecked {
     if (style) {
       this._renderer.setElementStyle(this._element.nativeElement, style[0], style[1]);
     }
-  }
-}
-
-
-@NgModule({
-  imports: [MdLineModule, DefaultStyleCompatibilityModeModule],
-  exports: [
-    MdGridList,
-    MdGridTile,
-    MdGridTileText,
-    MdLineModule,
-    DefaultStyleCompatibilityModeModule,
-  ],
-  declarations: [MdGridList, MdGridTile, MdGridTileText],
-})
-export class MdGridListModule {
-  /** @deprecated */
-  static forRoot(): ModuleWithProviders {
-    return {
-      ngModule: MdGridListModule,
-      providers: []
-    };
   }
 }

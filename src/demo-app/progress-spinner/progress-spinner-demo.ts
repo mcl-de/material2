@@ -8,10 +8,12 @@ import {Component} from '@angular/core';
   styleUrls: ['progress-spinner-demo.css'],
 })
 export class ProgressSpinnerDemo {
-  progressValue: number = 40;
+  progressValue: number = 60;
+  color: string = 'primary';
+  modeToggle: boolean = false;
 
   step(val: number) {
-    this.progressValue += val;
+    this.progressValue = Math.max(0, Math.min(100, val + this.progressValue));
   }
 
 }

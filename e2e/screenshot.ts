@@ -1,14 +1,16 @@
 import * as fs from 'fs';
-import * as gulp from 'gulp';
 import * as path from 'path';
 import {browser} from 'protractor';
 
-const OUTPUT_DIR = '/tmp/angular-material2-build/screenshots/';
+const OUTPUT_DIR = './screenshots/';
+const HEIGHT = 768;
+const WIDTH = 1024;
 
 let currentJasmineSpecName = '';
 
 /**  Adds a custom jasmine reporter that simply keeps track of the current test name. */
 function initializeEnvironment(jasmine: any) {
+  browser.manage().window().setSize(WIDTH, HEIGHT);
   let reporter = new jasmine.JsApiReporter({});
   reporter.specStarted = function(result: any) {
     currentJasmineSpecName = result.fullName;
@@ -35,8 +37,8 @@ export class Screenshot {
     return path.resolve(OUTPUT_DIR, this.filename);
   }
 
-  constructor(id: string) {
-    this.id = `${currentJasmineSpecName} ${id}`;
+  constructor(id?: string) {
+    this.id = id ? `${currentJasmineSpecName} ${id}` : currentJasmineSpecName;
     browser.takeScreenshot().then(png => this.storeScreenshot(png));
   }
 
@@ -52,6 +54,8 @@ export class Screenshot {
   }
 }
 
-export function screenshot(id: string) {
-  return new Screenshot(id);
+export function screenshot(id?: string) {
+  if (process.env['TRAVIS']) {
+    return new Screenshot(id);
+  }
 }

@@ -1,5 +1,9 @@
 {
+  "plugins": [
+    "./tools/stylelint/no-prefixes/no-prefixes.js"
+  ],
   "rules": {
+    "material/no-prefixes": [["last 2 versions", "not ie <= 10", "not ie_mob <= 10"]],
     "color-hex-case": "lower",
     "color-no-invalid-hex": true,
 
@@ -31,7 +35,6 @@
     "declaration-block-no-duplicate-properties": [ true, {
       "ignore": ["consecutive-duplicates-with-different-values"]
     }],
-    "declaration-block-no-ignored-properties": true,
     "declaration-block-trailing-semicolon": "always",
     "declaration-block-single-line-max-declarations": 1,
     "declaration-block-semicolon-space-before": "never",

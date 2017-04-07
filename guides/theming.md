@@ -13,7 +13,7 @@ a theme consists of:
 * A foreground palette: colors for text and icons.
 * A background palette: colors used for element backgrounds.
 
-In Angular Material 2, all theme styles are generated _statically_ at build-time so that your
+In Angular Material, all theme styles are generated _statically_ at build-time so that your
 app doesn't have to spend cycles generating theme styles on startup.
 
 [1]: https://material.google.com/style/color.html#color-color-palette
@@ -26,19 +26,47 @@ single css file for Angular Material in your app.
 You can include a theme file directly into your application from
 `@angular/material/core/theming/prebuilt`
 
+Available pre-built themes:
+* `deeppurple-amber.css`
+* `indigo-pink.css`
+* `pink-bluegrey.css`
+* `purple-green.css`
+
 If you're using Angular CLI, this is as simple as including one line
 in your `styles.css`  file:
 ```css
 @import '~@angular/material/core/theming/prebuilt/deeppurple-amber.css';
 ```
 
-Alternatively, you can just reference the file directly. This would look something like
+Alternatively, you can just reference the file directly. This would look something like:
 ```html
 <link href="node_modules/@angular/material/core/theming/prebuilt/indigo-pink.css" rel="stylesheet">
 ```
 The actual path will depend on your server setup.
 
 You can also concatenate the file with the rest of your application's css.
+
+Finally, if your app's content **is not** placed inside of a `md-sidenav-container` element, you
+need to add the `mat-app-background` class to your wrapper element (for example the `body`). This
+ensures that the proper theme background is applied to your page.
+
+#### Theming overlay-based components
+Since certain components (e.g. `dialog`) are inside of a global overlay container, your theme may
+not be applied to them. In order to define the theme that will be used for overlay components, you
+have to specify it on the global `OverlayContainer` instance:
+
+```ts
+import {OverlayContainer} from '@angular/material';
+
+@NgModule({
+  // misc config goes here
+})
+export class YourAppModule {
+  constructor(overlayContainer: OverlayContainer) {
+    overlayContainer.themeClass = 'your-theme';
+  }
+}
+```
 
 ### Defining a custom theme
 When you want more customization than a pre-built theme offers, you can create your own theme file.
@@ -51,19 +79,19 @@ the corresponding styles. A typical theme file will look something like this:
 
 // Include the base styles for Angular Material core. We include this here so that you only
 // have to load a single css file for Angular Material in your app.
-@include md-core();
+@include mat-core();
 
 // Define the palettes for your theme using the Material Design palettes available in palette.scss
 // (imported above). For each palette, you can optionally specify a default, lighter, and darker
 // hue.
-$candy-app-primary: md-palette($md-indigo);
-$candy-app-accent:  md-palette($md-pink, A200, A100, A400);
+$candy-app-primary: mat-palette($mat-indigo);
+$candy-app-accent:  mat-palette($mat-pink, A200, A100, A400);
 
 // The warn palette is optional (defaults to red).
-$candy-app-warn:    md-palette($md-red);
+$candy-app-warn:    mat-palette($mat-red);
 
 // Create the theme object (a Sass map containing all of the palettes).
-$candy-app-theme: md-light-theme($candy-app-primary, $candy-app-accent, $candy-app-warn);
+$candy-app-theme: mat-light-theme($candy-app-primary, $candy-app-accent, $candy-app-warn);
 
 // Include theme styles for core and each component used in your app.
 // Alternatively, you can import and @include the theme mixins for each component
@@ -92,13 +120,13 @@ some selector. For example, we could append the following to the example above t
 secondary dark theme:
 ```scss
 .unicorn-dark-theme {
-  $dark-primary: md-palette($md-blue-grey);
-  $dark-accent:  md-palette($md-amber, A200, A100, A400);
-  $dark-warn:    md-palette($md-deep-orange);
+  $dark-primary: mat-palette($mat-blue-grey);
+  $dark-accent:  mat-palette($mat-amber, A200, A100, A400);
+  $dark-warn:    mat-palette($mat-deep-orange);
 
-  $dark-theme: md-dark-theme($dark-primary, $dark-accent, $dark-warn);
+  $dark-theme: mat-dark-theme($dark-primary, $dark-accent, $dark-warn);
 
-  @include angular-material-theme($dark-theme);   
+  @include angular-material-theme($dark-theme);
 }
 ```
 
@@ -111,3 +139,4 @@ For more details about theming your own components, see [theming-your-components
 ### Future work
 * Once CSS variables (custom properties) are available in all the browsers we support,
   we will explore how to take advantage of them to make theming even simpler.
+* More prebuilt themes will be added as development continues.

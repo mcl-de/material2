@@ -1,6 +1,4 @@
 import {
-  NgModule,
-  ModuleWithProviders,
   ChangeDetectionStrategy,
   Component,
   ElementRef,
@@ -14,11 +12,10 @@ import {
   Optional,
   SkipSelf,
 } from '@angular/core';
-import {HttpModule, Http} from '@angular/http';
+import {Http} from '@angular/http';
 import {DomSanitizer} from '@angular/platform-browser';
-import {MdError, DefaultStyleCompatibilityModeModule} from '../core';
-import {MdIconRegistry} from './icon-registry';
-export {MdIconRegistry} from './icon-registry';
+import {MdError} from '../core';
+import {MdIconRegistry, MdIconNameNotFoundError} from './icon-registry';
 
 /** Exception thrown when an invalid icon name is passed to an md-icon component. */
 export class MdIconInvalidNameError extends MdError {
@@ -67,6 +64,7 @@ export class MdIconInvalidNameError extends MdError {
   styleUrls: ['icon.css'],
   host: {
     'role': 'img',
+    '[class.mat-icon]': 'true',
   },
   encapsulation: ViewEncapsulation.None,
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -96,6 +94,7 @@ export class MdIcon implements OnChanges, OnInit, AfterViewChecked {
 
   private _previousFontSetClass: string;
   private _previousFontIconClass: string;
+  private _previousAriaLabel: string;
 
   constructor(
       private _elementRef: ElementRef,
@@ -110,7 +109,7 @@ export class MdIcon implements OnChanges, OnInit, AfterViewChecked {
 
   _setElementColor(color: string, isAdd: boolean) {
     if (color != null && color != '') {
-      this._renderer.setElementClass(this._elementRef.nativeElement, `md-${color}`, isAdd);
+      this._renderer.setElementClass(this._elementRef.nativeElement, `mat-${color}`, isAdd);
     }
   }
 
@@ -151,7 +150,7 @@ export class MdIcon implements OnChanges, OnInit, AfterViewChecked {
         const [namespace, iconName] = this._splitIconName(this.svgIcon);
         this._mdIconRegistry.getNamedSvgIcon(iconName, namespace).first().subscribe(
             svg => this._setSvgElement(svg),
-            (err: any) => console.log(`Error retrieving icon: ${err}`));
+            (err: MdIconNameNotFoundError) => console.log(`Error retrieving icon: ${err.message}`));
       }
     }
     if (this._usingFontIcon()) {
@@ -176,7 +175,8 @@ export class MdIcon implements OnChanges, OnInit, AfterViewChecked {
 
   private _updateAriaLabel() {
       const ariaLabel = this._getAriaLabel();
-      if (ariaLabel) {
+      if (ariaLabel && ariaLabel !== this._previousAriaLabel) {
+        this._previousAriaLabel = ariaLabel;
         this._renderer.setElementAttribute(this._elementRef.nativeElement, 'aria-label', ariaLabel);
       }
   }
@@ -258,19 +258,3 @@ export const ICON_REGISTRY_PROVIDER = {
   deps: [[new Optional(), new SkipSelf(), MdIconRegistry], Http, DomSanitizer],
   useFactory: ICON_REGISTRY_PROVIDER_FACTORY,
 };
-
-@NgModule({
-  imports: [HttpModule, DefaultStyleCompatibilityModeModule],
-  exports: [MdIcon, DefaultStyleCompatibilityModeModule],
-  declarations: [MdIcon],
-  providers: [ICON_REGISTRY_PROVIDER],
-})
-export class MdIconModule {
-  /** @deprecated */
-  static forRoot(): ModuleWithProviders {
-    return {
-      ngModule: MdIconModule,
-      providers: [],
-    };
-  }
-}
