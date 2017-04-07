@@ -2,15 +2,19 @@ import {
   Component,
   ComponentRef,
   ViewChild,
+  NgZone,
+  OnDestroy,
+  Renderer,
+  ElementRef,
+} from '@angular/core';
+import {
   trigger,
   state,
   style,
   transition,
   animate,
-  AnimationTransitionEvent,
-  NgZone,
-  OnDestroy,
-} from '@angular/core';
+  AnimationEvent,
+} from '@angular/animations';
 import {
   BasePortalHost,
   ComponentPortal,
@@ -71,7 +75,10 @@ export class MdSnackBarContainer extends BasePortalHost implements OnDestroy {
   /** The snack bar configuration. */
   snackBarConfig: MdSnackBarConfig;
 
-  constructor(private _ngZone: NgZone) {
+  constructor(
+    private _ngZone: NgZone,
+    private _renderer: Renderer,
+    private _elementRef: ElementRef) {
     super();
   }
 
@@ -79,6 +86,14 @@ export class MdSnackBarContainer extends BasePortalHost implements OnDestroy {
   attachComponentPortal<T>(portal: ComponentPortal<T>): ComponentRef<T> {
     if (this._portalHost.hasAttached()) {
       throw new MdSnackBarContentAlreadyAttached();
+    }
+
+    if (this.snackBarConfig.extraClasses) {
+      // Not the most efficient way of adding classes, but the renderer doesn't allow us
+      // to pass in an array or a space-separated list.
+      for (let cssClass of this.snackBarConfig.extraClasses) {
+        this._renderer.setElementClass(this._elementRef.nativeElement, cssClass, true);
+      }
     }
 
     return this._portalHost.attachComponentPortal(portal);
@@ -90,7 +105,7 @@ export class MdSnackBarContainer extends BasePortalHost implements OnDestroy {
   }
 
   /** Handle end of animations, updating the state of the snackbar. */
-  onAnimationEnd(event: AnimationTransitionEvent) {
+  onAnimationEnd(event: AnimationEvent) {
     if (event.toState === 'void' || event.toState === 'complete') {
       this._completeExit();
     }

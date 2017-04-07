@@ -27,12 +27,15 @@ import {
 import {Subscription} from 'rxjs/Subscription';
 import {MenuPositionX, MenuPositionY} from './menu-positions';
 
+// TODO(andrewseguin): Remove the kebab versions in favor of camelCased attribute selectors
+
 /**
  * This directive is intended to be used in conjunction with an md-menu tag.  It is
  * responsible for toggling the display of the provided menu instance.
  */
 @Directive({
-  selector: '[md-menu-trigger-for], [mat-menu-trigger-for], [mdMenuTriggerFor]',
+  selector: `[md-menu-trigger-for], [mat-menu-trigger-for],
+             [mdMenuTriggerFor], [matMenuTriggerFor]`,
   host: {
     'aria-haspopup': 'true',
     '(mousedown)': '_handleMousedown($event)',
@@ -53,8 +56,18 @@ export class MdMenuTrigger implements AfterViewInit, OnDestroy {
 
   /** @deprecated */
   @Input('md-menu-trigger-for')
-  get _deprecatedMenuTriggerFor(): MdMenuPanel { return this.menu; }
-  set _deprecatedMenuTriggerFor(v: MdMenuPanel) { this.menu = v; }
+  get _deprecatedMdMenuTriggerFor(): MdMenuPanel { return this.menu; }
+  set _deprecatedMdMenuTriggerFor(v: MdMenuPanel) { this.menu = v; }
+
+  /** @deprecated */
+  @Input('mat-menu-trigger-for')
+  get _deprecatedMatMenuTriggerFor(): MdMenuPanel { return this.menu; }
+  set _deprecatedMatMenuTriggerFor(v: MdMenuPanel) { this.menu = v; }
+
+  // Trigger input for compatibility mode
+  @Input('matMenuTriggerFor')
+  get _matMenuTriggerFor(): MdMenuPanel { return this.menu; }
+  set _matMenuTriggerFor(v: MdMenuPanel) { this.menu = v; }
 
   /** References the menu instance that the trigger is associated with. */
   @Input('mdMenuTriggerFor') menu: MdMenuPanel;
@@ -131,7 +144,7 @@ export class MdMenuTrigger implements AfterViewInit, OnDestroy {
    */
   private _subscribeToBackdrop(): void {
     this._backdropSubscription = this._overlayRef.backdropClick().subscribe(() => {
-      this.closeMenu();
+      this.menu._emitCloseEvent();
     });
   }
 
@@ -216,7 +229,12 @@ export class MdMenuTrigger implements AfterViewInit, OnDestroy {
   private _subscribeToPositions(position: ConnectedPositionStrategy): void {
     this._positionSubscription = position.onPositionChange.subscribe((change) => {
       const posX: MenuPositionX = change.connectionPair.originX === 'start' ? 'after' : 'before';
-      const posY: MenuPositionY = change.connectionPair.originY === 'top' ? 'below' : 'above';
+      let posY: MenuPositionY = change.connectionPair.originY === 'top' ? 'below' : 'above';
+
+      if (!this.menu.overlapTrigger) {
+        posY = posY === 'below' ? 'above' : 'below';
+      }
+
       this.menu.setPositionClasses(posX, posY);
     });
   }
@@ -230,21 +248,29 @@ export class MdMenuTrigger implements AfterViewInit, OnDestroy {
     const [posX, fallbackX]: HorizontalConnectionPos[] =
       this.menu.positionX === 'before' ? ['end', 'start'] : ['start', 'end'];
 
-    const [posY, fallbackY]: VerticalConnectionPos[] =
+    const [overlayY, fallbackOverlayY]: VerticalConnectionPos[] =
       this.menu.positionY === 'above' ? ['bottom', 'top'] : ['top', 'bottom'];
+
+    let originY = overlayY;
+    let fallbackOriginY = fallbackOverlayY;
+
+    if (!this.menu.overlapTrigger) {
+      originY = overlayY === 'top' ? 'bottom' : 'top';
+      fallbackOriginY = fallbackOverlayY === 'top' ? 'bottom' : 'top';
+    }
 
     return this._overlay.position()
       .connectedTo(this._element,
-          {originX: posX, originY: posY}, {overlayX: posX, overlayY: posY})
+          {originX: posX, originY: originY}, {overlayX: posX, overlayY: overlayY})
       .withFallbackPosition(
-          {originX: fallbackX, originY: posY},
-          {overlayX: fallbackX, overlayY: posY})
+          {originX: fallbackX, originY: originY},
+          {overlayX: fallbackX, overlayY: overlayY})
       .withFallbackPosition(
-          {originX: posX, originY: fallbackY},
-          {overlayX: posX, overlayY: fallbackY})
+          {originX: posX, originY: fallbackOriginY},
+          {overlayX: posX, overlayY: fallbackOverlayY})
       .withFallbackPosition(
-          {originX: fallbackX, originY: fallbackY},
-          {overlayX: fallbackX, overlayY: fallbackY});
+          {originX: fallbackX, originY: fallbackOriginY},
+          {overlayX: fallbackX, overlayY: fallbackOverlayY});
   }
 
   private _cleanUpSubscriptions(): void {

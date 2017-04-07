@@ -1,13 +1,9 @@
 import {
-    NgModule,
-    ModuleWithProviders,
-    Component,
-    ChangeDetectionStrategy,
-    HostBinding,
-    Input,
+  Component,
+  ChangeDetectionStrategy,
+  HostBinding,
+  Input,
 } from '@angular/core';
-import {CommonModule} from '@angular/common';
-import {DefaultStyleCompatibilityModeModule} from '../core/compatibility/default-mode';
 
 // TODO(josephperrott): Benchpress tests.
 // TODO(josephperrott): Add ARIA attributes for progressbar "for".
@@ -23,9 +19,10 @@ import {DefaultStyleCompatibilityModeModule} from '../core/compatibility/default
     'role': 'progressbar',
     'aria-valuemin': '0',
     'aria-valuemax': '100',
-    '[class.md-primary]': 'color == "primary"',
-    '[class.md-accent]': 'color == "accent"',
-    '[class.md-warn]': 'color == "warn"',
+    '[class.mat-primary]': 'color == "primary"',
+    '[class.mat-accent]': 'color == "accent"',
+    '[class.mat-warn]': 'color == "warn"',
+    '[class.mat-progress-bar]': 'true',
   },
   templateUrl: 'progress-bar.html',
   styleUrls: ['progress-bar.css'],
@@ -82,20 +79,4 @@ export class MdProgressBar {
 /** Clamps a value to be between two numbers, by default 0 and 100. */
 function clamp(v: number, min = 0, max = 100) {
   return Math.max(min, Math.min(max, v));
-}
-
-
-@NgModule({
-  imports: [CommonModule, DefaultStyleCompatibilityModeModule],
-  exports: [MdProgressBar, DefaultStyleCompatibilityModeModule],
-  declarations: [MdProgressBar],
-})
-export class MdProgressBarModule {
-  /** @deprecated */
-  static forRoot(): ModuleWithProviders {
-    return {
-      ngModule: MdProgressBarModule,
-      providers: []
-    };
-  }
 }

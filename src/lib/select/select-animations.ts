@@ -1,17 +1,17 @@
 import {
   animate,
-  AnimationEntryMetadata,
+  AnimationTriggerMetadata,
   state,
   style,
   transition,
   trigger,
-} from '@angular/core';
+} from '@angular/animations';
 
 /**
  * The following are all the animations for the md-select component, with each
  * const containing the metadata for one animation.
  *
- * The values below match the implementation of the Material 1 md-select animation.
+ * The values below match the implementation of the AngularJS Material md-select animation.
  */
 
 /**
@@ -19,7 +19,7 @@ import {
  * it to either the top left corner (ltr) or top right corner (rtl) of the trigger,
  * depending on the text direction of the application.
  */
-export const transformPlaceholder: AnimationEntryMetadata = trigger('transformPlaceholder', [
+export const transformPlaceholder: AnimationTriggerMetadata = trigger('transformPlaceholder', [
   state('floating-ltr', style({
     top: '-22px',
     left: '-2px',
@@ -42,17 +42,17 @@ export const transformPlaceholder: AnimationEntryMetadata = trigger('transformPl
  *
  * When the panel is removed from the DOM, it simply fades out linearly.
  */
-export const transformPanel: AnimationEntryMetadata = trigger('transformPanel', [
+export const transformPanel: AnimationTriggerMetadata = trigger('transformPanel', [
   state('showing', style({
     opacity: 1,
     minWidth: 'calc(100% + 32px)',
-    transform: `translate3d(0,0,0) scaleY(1)`
+    transform: `scaleY(1)`
   })),
   transition('void => *', [
     style({
       opacity: 0,
       minWidth: '100%',
-      transform: `translate3d(0, 0, 0) scaleY(0)`
+      transform: `scaleY(0)`
     }),
     animate(`150ms cubic-bezier(0.25, 0.8, 0.25, 1)`)
   ]),
@@ -66,7 +66,7 @@ export const transformPanel: AnimationEntryMetadata = trigger('transformPanel', 
  * select's options. It is time delayed to occur 100ms after the overlay
  * panel has transformed in.
  */
-export const fadeInContent: AnimationEntryMetadata  =  trigger('fadeInContent', [
+export const fadeInContent: AnimationTriggerMetadata  =  trigger('fadeInContent', [
   state('showing', style({opacity: 1})),
   transition('void => showing', [
     style({opacity: 0}),

@@ -8,22 +8,21 @@ import {
   Output,
   EventEmitter,
   AfterContentInit,
-  NgModule,
-  ModuleWithProviders,
   ViewChild,
   ViewEncapsulation,
+  OnDestroy,
 } from '@angular/core';
-import {HAMMER_GESTURE_CONFIG} from '@angular/platform-browser';
-import {FormsModule, ControlValueAccessor, NG_VALUE_ACCESSOR} from '@angular/forms';
 import {
   applyCssTransform,
   coerceBooleanProperty,
-  GestureConfig,
   HammerInput,
-  DefaultStyleCompatibilityModeModule,
+  FocusOriginMonitor,
+  FocusOrigin,
+  MdRipple,
+  RippleRef
 } from '../core';
+import {ControlValueAccessor, NG_VALUE_ACCESSOR} from '@angular/forms';
 import {Observable} from 'rxjs/Observable';
-
 
 export const MD_SLIDE_TOGGLE_VALUE_ACCESSOR: any = {
   provide: NG_VALUE_ACCESSOR,
@@ -47,10 +46,10 @@ let nextId = 0;
   moduleId: module.id,
   selector: 'md-slide-toggle, mat-slide-toggle',
   host: {
-    '[class.md-checked]': 'checked',
-    '[class.md-disabled]': 'disabled',
-    // This md-slide-toggle prefix will change, once the temporary ripple is removed.
-    '[class.md-slide-toggle-focused]': '_hasFocus',
+    '[class.mat-slide-toggle]': 'true',
+    '[class.mat-checked]': 'checked',
+    '[class.mat-disabled]': 'disabled',
+    '[class.mat-slide-toggle-label-before]': 'labelPosition == "before"',
     '(mousedown)': '_setMousedown()'
   },
   templateUrl: 'slide-toggle.html',
@@ -59,7 +58,7 @@ let nextId = 0;
   encapsulation: ViewEncapsulation.None,
   changeDetection: ChangeDetectionStrategy.OnPush
 })
-export class MdSlideToggle implements AfterContentInit, ControlValueAccessor {
+export class MdSlideToggle implements OnDestroy, AfterContentInit, ControlValueAccessor {
 
   private onChange = (_: any) => {};
   private onTouched = () => {};
@@ -72,9 +71,10 @@ export class MdSlideToggle implements AfterContentInit, ControlValueAccessor {
   private _slideRenderer: SlideToggleRenderer = null;
   private _disabled: boolean = false;
   private _required: boolean = false;
+  private _disableRipple: boolean = false;
 
-  // Needs to be public to support AOT compilation (as host binding).
-  _hasFocus: boolean = false;
+  /** Reference to the focus state ripple. */
+  private _focusRipple: RippleRef;
 
   /** Name value will be applied to the input element if present */
   @Input() name: string = null;
@@ -85,11 +85,14 @@ export class MdSlideToggle implements AfterContentInit, ControlValueAccessor {
   /** Used to specify the tabIndex value for the underlying input element. */
   @Input() tabIndex: number = 0;
 
+  /** Whether the label should appear after or before the slide-toggle. Defaults to 'after' */
+  @Input() labelPosition: 'before' | 'after' = 'after';
+
   /** Used to set the aria-label attribute on the underlying input element. */
-  @Input() ariaLabel: string = null;
+  @Input('aria-label') ariaLabel: string = null;
 
   /** Used to set the aria-labelledby attribute on the underlying input element. */
-  @Input() ariaLabelledby: string = null;
+  @Input('aria-labelledby') ariaLabelledby: string = null;
 
   /** Whether the slide-toggle is disabled. */
   @Input()
@@ -101,6 +104,11 @@ export class MdSlideToggle implements AfterContentInit, ControlValueAccessor {
   get required(): boolean { return this._required; }
   set required(value) { this._required = coerceBooleanProperty(value); }
 
+  /** Whether the ripple effect for this slide-toggle is disabled. */
+  @Input()
+  get disableRipple(): boolean { return this._disableRipple; }
+  set disableRipple(value) { this._disableRipple = coerceBooleanProperty(value); }
+
   private _change: EventEmitter<MdSlideToggleChange> = new EventEmitter<MdSlideToggleChange>();
   /** An event will be dispatched each time the slide-toggle changes its value. */
   @Output() change: Observable<MdSlideToggleChange> = this._change.asObservable();
@@ -108,12 +116,26 @@ export class MdSlideToggle implements AfterContentInit, ControlValueAccessor {
   /** Returns the unique id for the visual hidden input. */
   get inputId(): string { return `${this.id || this._uniqueId}-input`; }
 
+  /** Reference to the underlying input element. */
   @ViewChild('input') _inputElement: ElementRef;
 
-  constructor(private _elementRef: ElementRef, private _renderer: Renderer) {}
+  /** Reference to the ripple directive on the thumb container. */
+  @ViewChild(MdRipple) _ripple: MdRipple;
+
+  constructor(private _elementRef: ElementRef,
+              private _renderer: Renderer,
+              private _focusOriginMonitor: FocusOriginMonitor) {}
 
   ngAfterContentInit() {
     this._slideRenderer = new SlideToggleRenderer(this._elementRef);
+
+    this._focusOriginMonitor
+      .monitor(this._inputElement.nativeElement, this._renderer, false)
+      .subscribe(focusOrigin => this._onInputFocusChange(focusOrigin));
+  }
+
+  ngOnDestroy() {
+    this._focusOriginMonitor.stopMonitoring(this._inputElement.nativeElement);
   }
 
   /**
@@ -128,7 +150,7 @@ export class MdSlideToggle implements AfterContentInit, ControlValueAccessor {
     event.stopPropagation();
 
     // Once a drag is currently in progress, we do not want to toggle the slide-toggle on a click.
-    if (!this.disabled && !this._slideRenderer.isDragging()) {
+    if (!this.disabled && !this._slideRenderer.dragging) {
       this.toggle();
 
       // Emit our custom change event if the native input emitted one.
@@ -160,19 +182,6 @@ export class MdSlideToggle implements AfterContentInit, ControlValueAccessor {
     setTimeout(() => this._isMousedown = false, 100);
   }
 
-  _onInputFocus() {
-    // Only show the focus / ripple indicator when the focus was not triggered by a mouse
-    // interaction on the component.
-    if (!this._isMousedown) {
-      this._hasFocus = true;
-    }
-  }
-
-  _onInputBlur() {
-    this._hasFocus = false;
-    this.onTouched();
-  }
-
   /** Implemented as part of ControlValueAccessor. */
   writeValue(value: any): void {
     this.checked = value;
@@ -195,8 +204,7 @@ export class MdSlideToggle implements AfterContentInit, ControlValueAccessor {
 
   /** Focuses the slide-toggle. */
   focus() {
-    this._renderer.invokeElementMethod(this._inputElement.nativeElement, 'focus');
-    this._onInputFocus();
+    this._focusOriginMonitor.focusVia(this._inputElement.nativeElement, this._renderer, 'program');
   }
 
   /** Whether the slide-toggle is checked. */
@@ -221,6 +229,22 @@ export class MdSlideToggle implements AfterContentInit, ControlValueAccessor {
     this.checked = !this.checked;
   }
 
+  /** Function is called whenever the focus changes for the input element. */
+  private _onInputFocusChange(focusOrigin: FocusOrigin) {
+    if (!this._focusRipple && focusOrigin === 'keyboard') {
+      // For keyboard focus show a persistent ripple as focus indicator.
+      this._focusRipple = this._ripple.launch(0, 0, {persistent: true, centered: true});
+    } else if (!focusOrigin) {
+      this.onTouched();
+
+      // Fade out and clear the focus ripple if one is currently present.
+      if (this._focusRipple) {
+        this._focusRipple.fadeOut();
+        this._focusRipple = null;
+      }
+    }
+  }
+
   private _updateColor(newColor: string) {
     this._setElementColor(this._color, false);
     this._setElementColor(newColor, true);
@@ -229,7 +253,7 @@ export class MdSlideToggle implements AfterContentInit, ControlValueAccessor {
 
   private _setElementColor(color: string, isAdd: boolean) {
     if (color != null && color != '') {
-      this._renderer.setElementClass(this._elementRef.nativeElement, `md-${color}`, isAdd);
+      this._renderer.setElementClass(this._elementRef.nativeElement, `mat-${color}`, isAdd);
     }
   }
 
@@ -249,22 +273,24 @@ export class MdSlideToggle implements AfterContentInit, ControlValueAccessor {
   }
 
   _onDrag(event: HammerInput) {
-    if (this._slideRenderer.isDragging()) {
+    if (this._slideRenderer.dragging) {
       this._slideRenderer.updateThumbPosition(event.deltaX);
     }
   }
 
   _onDragEnd() {
-    if (!this._slideRenderer.isDragging()) {
-      return;
-    }
+    if (this._slideRenderer.dragging) {
+      let _previousChecked = this.checked;
+      this.checked = this._slideRenderer.dragPercentage > 50;
 
-    // Notice that we have to stop outside of the current event handler,
-    // because otherwise the click event will be fired and will reset the new checked variable.
-    setTimeout(() => {
-      this.checked = this._slideRenderer.stopThumbDrag();
-      this._emitChangeEvent();
-    }, 0);
+      if (_previousChecked !== this.checked) {
+        this._emitChangeEvent();
+      }
+
+      // The drag should be stopped outside of the current event handler, because otherwise the
+      // click event will be fired before and will revert the drag change.
+      setTimeout(() => this._slideRenderer.stopThumbDrag());
+    }
   }
 
 }
@@ -274,77 +300,71 @@ export class MdSlideToggle implements AfterContentInit, ControlValueAccessor {
  */
 class SlideToggleRenderer {
 
+  /** Reference to the thumb HTMLElement. */
   private _thumbEl: HTMLElement;
+
+  /** Reference to the thumb bar HTMLElement. */
   private _thumbBarEl: HTMLElement;
+
+  /** Width of the thumb bar of the slide-toggle. */
   private _thumbBarWidth: number;
-  private _checked: boolean;
-  private _percentage: number;
+
+  /** Previous checked state before drag started. */
+  private _previousChecked: boolean;
+
+  /** Percentage of the thumb while dragging. Percentage as fraction of 100. */
+  dragPercentage: number;
+
+  /** Whether the thumb is currently being dragged. */
+  dragging: boolean = false;
 
   constructor(private _elementRef: ElementRef) {
-    this._thumbEl = _elementRef.nativeElement.querySelector('.md-slide-toggle-thumb-container');
-    this._thumbBarEl = _elementRef.nativeElement.querySelector('.md-slide-toggle-bar');
+    this._thumbEl = _elementRef.nativeElement.querySelector('.mat-slide-toggle-thumb-container');
+    this._thumbBarEl = _elementRef.nativeElement.querySelector('.mat-slide-toggle-bar');
   }
-
-  /** Whether the slide-toggle is currently dragging. */
-  isDragging(): boolean {
-    return !!this._thumbBarWidth;
-  }
-
 
   /** Initializes the drag of the slide-toggle. */
   startThumbDrag(checked: boolean) {
-    if (!this.isDragging()) {
-      this._thumbBarWidth = this._thumbBarEl.clientWidth - this._thumbEl.clientWidth;
-      this._checked = checked;
-      this._thumbEl.classList.add('md-dragging');
-    }
+    if (this.dragging) { return; }
+
+    this._thumbBarWidth = this._thumbBarEl.clientWidth - this._thumbEl.clientWidth;
+    this._thumbEl.classList.add('mat-dragging');
+
+    this._previousChecked = checked;
+    this.dragging = true;
   }
 
-  /** Stops the current drag and returns the new checked value. */
+  /** Resets the current drag and returns the new checked value. */
   stopThumbDrag(): boolean {
-    if (this.isDragging()) {
-      this._thumbBarWidth = null;
-      this._thumbEl.classList.remove('md-dragging');
+    if (!this.dragging) { return; }
 
-      applyCssTransform(this._thumbEl, '');
+    this.dragging = false;
+    this._thumbEl.classList.remove('mat-dragging');
 
-      return this._percentage > 50;
-    }
+    // Reset the transform because the component will take care of the thumb position after drag.
+    applyCssTransform(this._thumbEl, '');
+
+    return this.dragPercentage > 50;
   }
 
   /** Updates the thumb containers position from the specified distance. */
   updateThumbPosition(distance: number) {
-    this._percentage = this._getThumbPercentage(distance);
-    applyCssTransform(this._thumbEl, `translate3d(${this._percentage}%, 0, 0)`);
+    this.dragPercentage = this._getDragPercentage(distance);
+    // Calculate the moved distance based on the thumb bar width.
+    let dragX = (this.dragPercentage / 100) * this._thumbBarWidth;
+    applyCssTransform(this._thumbEl, `translate3d(${dragX}px, 0, 0)`);
   }
 
-  /** Retrieves the percentage of thumb from the moved distance. */
-  private _getThumbPercentage(distance: number) {
+  /** Retrieves the percentage of thumb from the moved distance. Percentage as fraction of 100. */
+  private _getDragPercentage(distance: number) {
     let percentage = (distance / this._thumbBarWidth) * 100;
 
     // When the toggle was initially checked, then we have to start the drag at the end.
-    if (this._checked) {
+    if (this._previousChecked) {
       percentage += 100;
     }
 
     return Math.max(0, Math.min(percentage, 100));
   }
 
-}
-
-
-@NgModule({
-  imports: [FormsModule, DefaultStyleCompatibilityModeModule],
-  exports: [MdSlideToggle, DefaultStyleCompatibilityModeModule],
-  declarations: [MdSlideToggle],
-  providers: [{provide: HAMMER_GESTURE_CONFIG, useClass: GestureConfig}],
-})
-export class MdSlideToggleModule {
-  /** @deprecated */
-  static forRoot(): ModuleWithProviders {
-    return {
-      ngModule: MdSlideToggleModule,
-      providers: []
-    };
-  }
 }

@@ -1,7 +1,7 @@
-import {async, TestBed, ComponentFixture} from '@angular/core/testing';
+import {async, ComponentFixture, TestBed} from '@angular/core/testing';
 import {Component} from '@angular/core';
 import {By} from '@angular/platform-browser';
-import {MdButtonModule} from './button';
+import {MdButtonModule} from './index';
 import {ViewportRuler} from '../core/overlay/position/viewport-ruler';
 import {FakeViewportRuler} from '../core/overlay/position/fake-viewport-ruler';
 
@@ -30,13 +30,13 @@ describe('MdButton', () => {
 
     testComponent.buttonColor = 'primary';
     fixture.detectChanges();
-    expect(buttonDebugElement.nativeElement.classList.contains('md-primary')).toBe(true);
-    expect(aDebugElement.nativeElement.classList.contains('md-primary')).toBe(true);
+    expect(buttonDebugElement.nativeElement.classList.contains('mat-primary')).toBe(true);
+    expect(aDebugElement.nativeElement.classList.contains('mat-primary')).toBe(true);
 
     testComponent.buttonColor = 'accent';
     fixture.detectChanges();
-    expect(buttonDebugElement.nativeElement.classList.contains('md-accent')).toBe(true);
-    expect(aDebugElement.nativeElement.classList.contains('md-accent')).toBe(true);
+    expect(buttonDebugElement.nativeElement.classList.contains('mat-accent')).toBe(true);
+    expect(aDebugElement.nativeElement.classList.contains('mat-accent')).toBe(true);
   });
 
   it('should should not clear previous defined classes', () => {
@@ -49,14 +49,14 @@ describe('MdButton', () => {
     testComponent.buttonColor = 'primary';
     fixture.detectChanges();
 
-    expect(buttonDebugElement.nativeElement.classList.contains('md-primary')).toBe(true);
+    expect(buttonDebugElement.nativeElement.classList.contains('mat-primary')).toBe(true);
     expect(buttonDebugElement.nativeElement.classList.contains('custom-class')).toBe(true);
 
     testComponent.buttonColor = 'accent';
     fixture.detectChanges();
 
-    expect(buttonDebugElement.nativeElement.classList.contains('md-primary')).toBe(false);
-    expect(buttonDebugElement.nativeElement.classList.contains('md-accent')).toBe(true);
+    expect(buttonDebugElement.nativeElement.classList.contains('mat-primary')).toBe(false);
+    expect(buttonDebugElement.nativeElement.classList.contains('mat-accent')).toBe(true);
     expect(buttonDebugElement.nativeElement.classList.contains('custom-class')).toBe(true);
 
   });

@@ -30,14 +30,20 @@ export class OverlayRef implements PortalHost {
    * @returns The portal attachment result.
    */
   attach(portal: Portal<any>): any {
-    if (this._state.hasBackdrop) {
-      this._attachBackdrop();
-    }
-
     let attachResult = this._portalHost.attach(portal);
+
+    // Update the pane element with the given state configuration.
+    this._updateStackingOrder();
     this.updateSize();
     this.updateDirection();
     this.updatePosition();
+
+    // Enable pointer events for the overlay pane element.
+    this._togglePointerEvents(true);
+
+    if (this._state.hasBackdrop) {
+      this._attachBackdrop();
+    }
 
     return attachResult;
   }
@@ -47,7 +53,13 @@ export class OverlayRef implements PortalHost {
    * @returns Resolves when the overlay has been detached.
    */
   detach(): Promise<any> {
-    this._detachBackdrop();
+    this.detachBackdrop();
+
+    // When the overlay is detached, the pane element should disable pointer events.
+    // This is necessary because otherwise the pane element will cover the page and disable
+    // pointer events therefore. Depends on the position strategy and the applied pane boundaries.
+    this._togglePointerEvents(false);
+
     return this._portalHost.detach();
   }
 
@@ -59,7 +71,7 @@ export class OverlayRef implements PortalHost {
       this._state.positionStrategy.dispose();
     }
 
-    this._detachBackdrop();
+    this.detachBackdrop();
     this._portalHost.dispose();
   }
 
@@ -115,6 +127,11 @@ export class OverlayRef implements PortalHost {
     }
   }
 
+  /** Toggles the pointer events for the overlay pane element. */
+  private _togglePointerEvents(enablePointer: boolean) {
+    this._pane.style.pointerEvents = enablePointer ? 'auto' : 'none';
+  }
+
   /** Attaches a backdrop for this overlay. */
   private _attachBackdrop() {
     this._backdropElement = document.createElement('div');
@@ -137,8 +154,21 @@ export class OverlayRef implements PortalHost {
     });
   }
 
+  /**
+   * Updates the stacking order of the element, moving it to the top if necessary.
+   * This is required in cases where one overlay was detached, while another one,
+   * that should be behind it, was destroyed. The next time both of them are opened,
+   * the stacking will be wrong, because the detached element's pane will still be
+   * in its original DOM position.
+   */
+  private _updateStackingOrder() {
+    if (this._pane.nextSibling) {
+      this._pane.parentNode.appendChild(this._pane);
+    }
+  }
+
   /** Detaches the backdrop (if any) associated with the overlay. */
-  private _detachBackdrop(): void {
+  detachBackdrop(): void {
     let backdropToDetach = this._backdropElement;
 
     if (backdropToDetach) {

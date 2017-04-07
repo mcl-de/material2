@@ -2,7 +2,7 @@ import {async, ComponentFixture, TestBed} from '@angular/core/testing';
 import {Component, ViewChild, ViewContainerRef} from '@angular/core';
 import {LayoutDirection, Dir} from '../core/rtl/dir';
 import {MdTabHeader} from './tab-header';
-import {MdRippleModule} from '../core/ripple/ripple';
+import {MdRippleModule} from '../core/ripple/index';
 import {CommonModule} from '@angular/common';
 import {PortalModule} from '../core';
 import {MdInkBar} from './ink-bar';
@@ -10,10 +10,13 @@ import {MdTabLabelWrapper} from './tab-label-wrapper';
 import {RIGHT_ARROW, LEFT_ARROW, ENTER} from '../core/keyboard/keycodes';
 import {FakeViewportRuler} from '../core/overlay/position/fake-viewport-ruler';
 import {ViewportRuler} from '../core/overlay/position/viewport-ruler';
+import {dispatchKeyboardEvent} from '../core/testing/dispatch-events';
+import {Subject} from 'rxjs/Subject';
 
 
 describe('MdTabHeader', () => {
   let dir: LayoutDirection = 'ltr';
+  let dirChange = new Subject();
   let fixture: ComponentFixture<SimpleTabHeaderApp>;
   let appComponent: SimpleTabHeaderApp;
 
@@ -28,7 +31,9 @@ describe('MdTabHeader', () => {
         SimpleTabHeaderApp,
       ],
       providers: [
-        {provide: Dir, useFactory: () => { return {value: dir}; }},
+        {provide: Dir, useFactory: () => {
+          return {value: dir,  dirChange: dirChange.asObservable()};
+        }},
         {provide: ViewportRuler, useClass: FakeViewportRuler},
       ]
     });
@@ -105,19 +110,21 @@ describe('MdTabHeader', () => {
       fixture.detectChanges();
       expect(appComponent.mdTabHeader.focusIndex).toBe(0);
 
+      let tabListContainer = appComponent.mdTabHeader._tabListContainer.nativeElement;
+
       // Move focus right to 2
-      dispatchKeydownEvent(appComponent.mdTabHeader._tabListContainer.nativeElement, RIGHT_ARROW);
+      dispatchKeyboardEvent(tabListContainer, 'keydown', RIGHT_ARROW);
       fixture.detectChanges();
       expect(appComponent.mdTabHeader.focusIndex).toBe(2);
 
       // Select the focused index 2
       expect(appComponent.selectedIndex).toBe(0);
-      dispatchKeydownEvent(appComponent.mdTabHeader._tabListContainer.nativeElement, ENTER);
+      dispatchKeyboardEvent(tabListContainer, 'keydown', ENTER);
       fixture.detectChanges();
       expect(appComponent.selectedIndex).toBe(2);
 
       // Move focus right to 0
-      dispatchKeydownEvent(appComponent.mdTabHeader._tabListContainer.nativeElement, LEFT_ARROW);
+      dispatchKeyboardEvent(tabListContainer, 'keydown', LEFT_ARROW);
       fixture.detectChanges();
       expect(appComponent.mdTabHeader.focusIndex).toBe(0);
     });
@@ -189,21 +196,23 @@ describe('MdTabHeader', () => {
         expect(appComponent.mdTabHeader.scrollDistance).toBe(0);
       });
     });
-  });
 
+    it('should re-align the ink bar when the direction changes', () => {
+      fixture = TestBed.createComponent(SimpleTabHeaderApp);
+      fixture.detectChanges();
+
+      const inkBar = fixture.componentInstance.mdTabHeader._inkBar;
+
+      spyOn(inkBar, 'alignToElement');
+
+      dirChange.next();
+      fixture.detectChanges();
+
+      expect(inkBar.alignToElement).toHaveBeenCalled();
+    });
+
+  });
 });
-
-
-/** Dispatches a keydown event from an element. */
-function dispatchKeydownEvent(element: HTMLElement, keyCode: number): void {
-  let event: any = document.createEvent('KeyboardEvent');
-  (event.initKeyEvent || event.initKeyboardEvent).bind(event)(
-      'keydown', true, true, window, 0, 0, 0, 0, 0, keyCode);
-  Object.defineProperty(event, 'keyCode', {
-    get: function() { return keyCode; }
-  });
-  element.dispatchEvent(event);
-}
 
 interface Tab {
   label: string;
@@ -216,11 +225,11 @@ interface Tab {
     <md-tab-header [selectedIndex]="selectedIndex"
                (indexFocused)="focusedIndex = $event"
                (selectFocusedIndex)="selectedIndex = $event">
-      <div md-tab-label-wrapper style="min-width: 30px"
+      <div md-tab-label-wrapper style="min-width: 30px; width: 30px"
            *ngFor="let tab of tabs; let i = index"
            [disabled]="!!tab.disabled"
            (click)="selectedIndex = i">
-         {{tab.label}}  
+         {{tab.label}}
       </div>
     </md-tab-header>
   </div>

@@ -62,6 +62,24 @@ describe('Overlay', () => {
     expect(overlayContainerElement.textContent).toBe('');
   });
 
+  it('should disable pointer events of the pane element if detached', () => {
+    let overlayRef = overlay.create();
+    let paneElement = overlayRef.overlayElement;
+
+    overlayRef.attach(componentPortal);
+    viewContainerFixture.detectChanges();
+
+    expect(paneElement.childNodes.length).not.toBe(0);
+    expect(paneElement.style.pointerEvents)
+      .toBe('auto', 'Expected the overlay pane to enable pointerEvents when attached.');
+
+    overlayRef.detach();
+
+    expect(paneElement.childNodes.length).toBe(0);
+    expect(paneElement.style.pointerEvents)
+      .toBe('none', 'Expected the overlay pane to disable pointerEvents when detached.');
+  });
+
   it('should open multiple overlays', () => {
     let pizzaOverlayRef = overlay.create();
     pizzaOverlayRef.attach(componentPortal);
@@ -80,6 +98,31 @@ describe('Overlay', () => {
     cakeOverlayRef.dispose();
     expect(overlayContainerElement.childNodes.length).toBe(0);
     expect(overlayContainerElement.textContent).toBe('');
+  });
+
+  it('should ensure that the most-recently-attached overlay is on top', () => {
+    let pizzaOverlayRef = overlay.create();
+    let cakeOverlayRef = overlay.create();
+
+    pizzaOverlayRef.attach(componentPortal);
+    cakeOverlayRef.attach(templatePortal);
+
+    expect(pizzaOverlayRef.overlayElement.nextSibling)
+        .toBeTruthy('Expected pizza to be on the bottom.');
+    expect(cakeOverlayRef.overlayElement.nextSibling)
+        .toBeFalsy('Expected cake to be on top.');
+
+    pizzaOverlayRef.dispose();
+    cakeOverlayRef.detach();
+
+    pizzaOverlayRef = overlay.create();
+    pizzaOverlayRef.attach(componentPortal);
+    cakeOverlayRef.attach(templatePortal);
+
+    expect(pizzaOverlayRef.overlayElement.nextSibling)
+        .toBeTruthy('Expected pizza to still be on the bottom.');
+    expect(cakeOverlayRef.overlayElement.nextSibling)
+        .toBeFalsy('Expected cake to still be on top.');
   });
 
   it('should set the direction', () => {
@@ -254,6 +297,34 @@ describe('Overlay', () => {
   });
 });
 
+describe('OverlayContainer theming', () => {
+  let overlayContainer: OverlayContainer;
+  let overlayContainerElement: HTMLElement;
+
+  beforeEach(async(() => {
+    TestBed.configureTestingModule({ imports: [OverlayContainerThemingTestModule] });
+    TestBed.compileComponents();
+  }));
+
+  beforeEach(inject([OverlayContainer], (o: OverlayContainer) => {
+    overlayContainer = o;
+    overlayContainerElement = overlayContainer.getContainerElement();
+  }));
+
+  it('should be able to set a theme on the overlay container', () => {
+    overlayContainer.themeClass = 'my-theme';
+    expect(overlayContainerElement.classList).toContain('my-theme');
+  });
+
+  it('should clear any previously-set themes when a new theme is set', () => {
+    overlayContainer.themeClass = 'initial-theme';
+    expect(overlayContainerElement.classList).toContain('initial-theme');
+
+    overlayContainer.themeClass = 'new-theme';
+    expect(overlayContainerElement.classList).not.toContain('initial-theme');
+    expect(overlayContainerElement.classList).toContain('new-theme');
+  });
+});
 
 /** Simple component for testing ComponentPortal. */
 @Component({template: '<p>Pizza</p>'})
@@ -261,7 +332,7 @@ class PizzaMsg { }
 
 
 /** Test-bed component that contains a TempatePortal and an ElementRef. */
-@Component({template: `<template cdk-portal>Cake</template>`})
+@Component({template: `<ng-template cdk-portal>Cake</ng-template>`})
 class TestComponentWithTemplatePortals {
   @ViewChild(TemplatePortalDirective) templatePortal: TemplatePortalDirective;
 
@@ -278,6 +349,12 @@ const TEST_COMPONENTS = [PizzaMsg, TestComponentWithTemplatePortals];
   entryComponents: TEST_COMPONENTS,
 })
 class OverlayTestModule { }
+
+/** Component for testing the overlay container theming. */
+@NgModule({
+  imports: [OverlayModule, PortalModule],
+})
+class OverlayContainerThemingTestModule { }
 
 class FakePositionStrategy implements PositionStrategy {
   apply(element: Element): Promise<void> {

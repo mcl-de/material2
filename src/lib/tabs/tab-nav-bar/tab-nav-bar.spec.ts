@@ -1,9 +1,10 @@
 import {async, ComponentFixture, TestBed} from '@angular/core/testing';
-import {MdTabsModule} from '../tab-group';
+import {MdTabsModule} from '../index';
 import {Component} from '@angular/core';
 import {By} from '@angular/platform-browser';
 import {ViewportRuler} from '../../core/overlay/position/viewport-ruler';
 import {FakeViewportRuler} from '../../core/overlay/position/fake-viewport-ruler';
+import {dispatchMouseEvent} from '../../core/testing/dispatch-events';
 
 
 describe('MdTabNavBar', () => {
@@ -49,19 +50,15 @@ describe('MdTabNavBar', () => {
     let fixture: ComponentFixture<TabLinkWithNgIf> = TestBed.createComponent(TabLinkWithNgIf);
     fixture.detectChanges();
 
-    let link = fixture.debugElement.nativeElement.querySelector('[md-tab-link]');
-    let rippleBackground = link.querySelector('.md-ripple-background');
-    let mouseEvent = document.createEvent('MouseEvents');
+    let link = fixture.debugElement.nativeElement.querySelector('.mat-tab-link');
 
     fixture.componentInstance.isDestroyed = true;
     fixture.detectChanges();
 
-    mouseEvent.initMouseEvent('mousedown', false, false, window, 0, 0, 0, 0, 0, false, false,
-        false, false, 0, null);
+    dispatchMouseEvent(link, 'mousedown');
 
-    link.dispatchEvent(mouseEvent);
-
-    expect(rippleBackground.classList).not.toContain('md-ripple-active');
+    expect(link.querySelector('.mat-ripple-element'))
+      .toBeFalsy('Expected no ripple to be created when ripple target is destroyed.');
   });
 });
 
