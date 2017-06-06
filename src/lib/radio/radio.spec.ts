@@ -1,5 +1,5 @@
 import {async, ComponentFixture, TestBed, fakeAsync, tick} from '@angular/core/testing';
-import {NgControl, FormsModule, ReactiveFormsModule, FormControl} from '@angular/forms';
+import {NgModel, FormsModule, ReactiveFormsModule, FormControl} from '@angular/forms';
 import {Component, DebugElement} from '@angular/core';
 import {By} from '@angular/platform-browser';
 import {MdRadioGroup, MdRadioButton, MdRadioChange, MdRadioModule} from './index';
@@ -13,7 +13,7 @@ describe('MdRadio', () => {
 
   beforeEach(async(() => {
     TestBed.configureTestingModule({
-      imports: [MdRadioModule.forRoot(), FormsModule, ReactiveFormsModule],
+      imports: [MdRadioModule, FormsModule, ReactiveFormsModule],
       declarations: [
         RadiosInsideRadioGroup,
         RadioGroupWithNgModel,
@@ -48,7 +48,7 @@ describe('MdRadio', () => {
 
       groupDebugElement = fixture.debugElement.query(By.directive(MdRadioGroup));
       groupNativeElement = groupDebugElement.nativeElement;
-      groupInstance = groupDebugElement.injector.get(MdRadioGroup);
+      groupInstance = groupDebugElement.injector.get<MdRadioGroup>(MdRadioGroup);
 
       radioDebugElements = fixture.debugElement.queryAll(By.directive(MdRadioButton));
       radioNativeElements = radioDebugElements.map(debugEl => debugEl.nativeElement);
@@ -229,7 +229,7 @@ describe('MdRadio', () => {
     });
 
     it('should not show ripples on disabled radio buttons', () => {
-      radioInstances[0].disabled = true;
+      testComponent.isFirstDisabled = true;
       fixture.detectChanges();
 
       dispatchFakeEvent(radioLabelElements[0], 'mousedown');
@@ -238,7 +238,7 @@ describe('MdRadio', () => {
       expect(radioNativeElements[0].querySelectorAll('.mat-ripple-element').length)
         .toBe(0, 'Expected a disabled radio button to not show ripples');
 
-      radioInstances[0].disabled = false;
+      testComponent.isFirstDisabled = false;
       fixture.detectChanges();
 
       dispatchFakeEvent(radioLabelElements[0], 'mousedown');
@@ -344,7 +344,7 @@ describe('MdRadio', () => {
     let groupInstance: MdRadioGroup;
     let radioInstances: MdRadioButton[];
     let testComponent: RadioGroupWithNgModel;
-    let groupNgControl: NgControl;
+    let groupNgModel: NgModel;
 
     beforeEach(() => {
       fixture = TestBed.createComponent(RadioGroupWithNgModel);
@@ -354,8 +354,8 @@ describe('MdRadio', () => {
 
       groupDebugElement = fixture.debugElement.query(By.directive(MdRadioGroup));
       groupNativeElement = groupDebugElement.nativeElement;
-      groupInstance = groupDebugElement.injector.get(MdRadioGroup);
-      groupNgControl = groupDebugElement.injector.get(NgControl);
+      groupInstance = groupDebugElement.injector.get<MdRadioGroup>(MdRadioGroup);
+      groupNgModel = groupDebugElement.injector.get<NgModel>(NgModel);
 
       radioDebugElements = fixture.debugElement.queryAll(By.directive(MdRadioButton));
       radioInstances = radioDebugElements.map(debugEl => debugEl.componentInstance);
@@ -392,36 +392,38 @@ describe('MdRadio', () => {
 
     it('should have the correct control state initially and after interaction', () => {
       // The control should start off valid, pristine, and untouched.
-      expect(groupNgControl.valid).toBe(true);
-      expect(groupNgControl.pristine).toBe(true);
-      expect(groupNgControl.touched).toBe(false);
+      expect(groupNgModel.valid).toBe(true);
+      expect(groupNgModel.pristine).toBe(true);
+      expect(groupNgModel.touched).toBe(false);
 
       // After changing the value programmatically, the control should stay pristine
       // but remain untouched.
       radioInstances[1].checked = true;
       fixture.detectChanges();
 
-      expect(groupNgControl.valid).toBe(true);
-      expect(groupNgControl.pristine).toBe(true);
-      expect(groupNgControl.touched).toBe(false);
+      expect(groupNgModel.valid).toBe(true);
+      expect(groupNgModel.pristine).toBe(true);
+      expect(groupNgModel.touched).toBe(false);
 
       // After a user interaction occurs (such as a click), the control should become dirty and
       // now also be touched.
       radioLabelElements[2].click();
       fixture.detectChanges();
 
-      expect(groupNgControl.valid).toBe(true);
-      expect(groupNgControl.pristine).toBe(false);
-      expect(groupNgControl.touched).toBe(true);
+      expect(groupNgModel.valid).toBe(true);
+      expect(groupNgModel.pristine).toBe(false);
+      expect(groupNgModel.touched).toBe(true);
     });
 
     it('should write to the radio button based on ngModel', fakeAsync(() => {
       testComponent.modelValue = 'chocolate';
+
       fixture.detectChanges();
       tick();
       fixture.detectChanges();
 
       expect(innerRadios[1].nativeElement.checked).toBe(true);
+      expect(radioInstances[1].checked).toBe(true);
     }));
 
     it('should update the ngModel value when selecting a radio button', () => {
@@ -456,7 +458,7 @@ describe('MdRadio', () => {
 
       testComponent = fixture.debugElement.componentInstance;
       groupDebugElement = fixture.debugElement.query(By.directive(MdRadioGroup));
-      groupInstance = groupDebugElement.injector.get(MdRadioGroup);
+      groupInstance = groupDebugElement.injector.get<MdRadioGroup>(MdRadioGroup);
     });
 
     it('should toggle the disabled state', () => {
@@ -551,7 +553,7 @@ describe('MdRadio', () => {
     it('should change aria-label attribute if property is changed at runtime', () => {
       expect(fruitRadioNativeInputs[0].getAttribute('aria-label')).toBe('Banana');
 
-      fruitRadioInstances[0].ariaLabel = 'Pineapple';
+      testComponent.ariaLabel = 'Pineapple';
       fixture.detectChanges();
 
       expect(fruitRadioNativeInputs[0].getAttribute('aria-label')).toBe('Pineapple');
@@ -568,7 +570,7 @@ describe('MdRadio', () => {
     it('should change aria-labelledby attribute if property is changed at runtime', () => {
       expect(fruitRadioNativeInputs[0].getAttribute('aria-labelledby')).toBe('xyz');
 
-      fruitRadioInstances[0].ariaLabelledby = 'uvw';
+      testComponent.ariaLabelledby = 'uvw';
       fixture.detectChanges();
 
       expect(fruitRadioNativeInputs[0].getAttribute('aria-labelledby')).toBe('uvw');
@@ -593,7 +595,8 @@ describe('MdRadio', () => {
                   [labelPosition]="labelPos"
                   [value]="groupValue"
                   name="test-name">
-    <md-radio-button value="fire" [disableRipple]="disableRipple">Charmander</md-radio-button>
+    <md-radio-button value="fire" [disableRipple]="disableRipple"
+                     [disabled]="isFirstDisabled">Charmander</md-radio-button>
     <md-radio-button value="water" [disableRipple]="disableRipple">Squirtle</md-radio-button>
     <md-radio-button value="leaf" [disableRipple]="disableRipple">Bulbasaur</md-radio-button>
   </md-radio-group>
@@ -602,6 +605,7 @@ describe('MdRadio', () => {
 class RadiosInsideRadioGroup {
   labelPos: 'before' | 'after';
   isGroupDisabled: boolean = false;
+  isFirstDisabled: boolean = false;
   groupValue: string = null;
   disableRipple: boolean = false;
 }
@@ -618,12 +622,18 @@ class RadiosInsideRadioGroup {
     <md-radio-button name="weather" value="cool">Autumn</md-radio-button>
 
     <span id="xyz">Baby Banana</span>
-    <md-radio-button name="fruit" value="banana" aria-label="Banana" aria-labelledby="xyz">
+    <md-radio-button name="fruit"
+                     value="banana"
+                     [aria-label]="ariaLabel"
+                     [aria-labelledby]="ariaLabelledby">
     </md-radio-button>
     <md-radio-button name="fruit" value="raspberry">Raspberry</md-radio-button>
   `
 })
-class StandaloneRadioButtons { }
+class StandaloneRadioButtons {
+  ariaLabel: string = 'Banana';
+  ariaLabelledby: string = 'xyz';
+}
 
 
 @Component({

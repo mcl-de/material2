@@ -1,11 +1,13 @@
-import {ComponentFixture, TestBed} from '@angular/core/testing';
+import {ComponentFixture, TestBed, async} from '@angular/core/testing';
 import {Component, ViewChild} from '@angular/core';
 import {By} from '@angular/platform-browser';
-import {ConnectedOverlayDirective, OverlayModule} from './overlay-directives';
+import {ConnectedOverlayDirective, OverlayModule, OverlayOrigin} from './overlay-directives';
 import {OverlayContainer} from './overlay-container';
 import {ConnectedPositionStrategy} from './position/connected-position-strategy';
 import {ConnectedOverlayPositionChange} from './position/connected-position';
 import {Dir} from '../rtl/dir';
+import {dispatchKeyboardEvent} from '../testing/dispatch-events';
+import {ESCAPE} from '../keyboard/keycodes';
 
 
 describe('Overlay directives', () => {
@@ -15,8 +17,8 @@ describe('Overlay directives', () => {
 
   beforeEach(() => {
     TestBed.configureTestingModule({
-      imports: [OverlayModule.forRoot()],
-      declarations: [ConnectedOverlayDirectiveTest],
+      imports: [OverlayModule],
+      declarations: [ConnectedOverlayDirectiveTest, ConnectedOverlayPropertyInitOrder],
       providers: [
         {provide: OverlayContainer, useFactory: () => {
           overlayContainerElement = document.createElement('div');
@@ -75,7 +77,7 @@ describe('Overlay directives', () => {
 
     let strategy =
         <ConnectedPositionStrategy> overlayDirective.overlayRef.getState().positionStrategy;
-    expect(strategy).toEqual(jasmine.any(ConnectedPositionStrategy));
+    expect(strategy instanceof ConnectedPositionStrategy).toBe(true);
 
     let positions = strategy.positions;
     expect(positions.length).toBeGreaterThan(0);
@@ -97,6 +99,32 @@ describe('Overlay directives', () => {
 
     expect(getPaneElement().getAttribute('dir')).toBe('ltr');
   });
+
+  it('should close when pressing escape', () => {
+    fixture.componentInstance.isOpen = true;
+    fixture.detectChanges();
+
+    dispatchKeyboardEvent(document, 'keydown', ESCAPE);
+    fixture.detectChanges();
+
+    expect(overlayContainerElement.textContent.trim()).toBe('',
+        'Expected overlay to have been detached.');
+  });
+
+  it('should not depend on the order in which the `origin` and `open` are set', async(() => {
+    fixture.destroy();
+
+    const propOrderFixture = TestBed.createComponent(ConnectedOverlayPropertyInitOrder);
+    propOrderFixture.detectChanges();
+
+    const overlayDirective = propOrderFixture.componentInstance.connectedOverlayDirective;
+
+    expect(() => {
+      overlayDirective.open = true;
+      overlayDirective.origin = propOrderFixture.componentInstance.trigger;
+      propOrderFixture.detectChanges();
+    }).not.toThrow();
+  }));
 
   describe('inputs', () => {
 
@@ -238,9 +266,11 @@ describe('Overlay directives', () => {
       fixture.detectChanges();
 
       expect(fixture.componentInstance.positionChangeHandler).toHaveBeenCalled();
-      expect(fixture.componentInstance.positionChangeHandler.calls.mostRecent().args[0])
-          .toEqual(jasmine.any(ConnectedOverlayPositionChange),
-              `Expected directive to emit an instance of ConnectedOverlayPositionChange.`);
+
+      const latestCall = fixture.componentInstance.positionChangeHandler.calls.mostRecent();
+
+      expect(latestCall.args[0] instanceof ConnectedOverlayPositionChange)
+          .toBe(true, `Expected directive to emit an instance of ConnectedOverlayPositionChange.`);
     });
 
     it('should emit attach and detach appropriately', () => {
@@ -250,9 +280,8 @@ describe('Overlay directives', () => {
       fixture.detectChanges();
 
       expect(fixture.componentInstance.attachHandler).toHaveBeenCalled();
-      expect(fixture.componentInstance.attachResult)
-          .toEqual(jasmine.any(HTMLElement),
-              `Expected pane to be populated with HTML elements when attach was called.`);
+      expect(fixture.componentInstance.attachResult instanceof HTMLElement)
+          .toBe(true, `Expected pane to be populated with HTML elements when attach was called.`);
       expect(fixture.componentInstance.detachHandler).not.toHaveBeenCalled();
 
       fixture.componentInstance.isOpen = false;
@@ -297,3 +326,14 @@ class ConnectedOverlayDirectiveTest {
 
   @ViewChild(ConnectedOverlayDirective) connectedOverlayDirective: ConnectedOverlayDirective;
 }
+
+@Component({
+  template: `
+  <button cdk-overlay-origin #trigger="cdkOverlayOrigin">Toggle menu</button>
+  <ng-template cdk-connected-overlay>Menu content</ng-template>`,
+})
+class ConnectedOverlayPropertyInitOrder {
+  @ViewChild(ConnectedOverlayDirective) connectedOverlayDirective: ConnectedOverlayDirective;
+  @ViewChild('trigger') trigger: OverlayOrigin;
+}
+

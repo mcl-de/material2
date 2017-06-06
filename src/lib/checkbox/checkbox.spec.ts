@@ -6,7 +6,7 @@ import {
   TestBed,
   tick,
 } from '@angular/core/testing';
-import {NgControl, FormsModule, ReactiveFormsModule, FormControl} from '@angular/forms';
+import {NgModel, FormsModule, ReactiveFormsModule, FormControl} from '@angular/forms';
 import {Component, DebugElement} from '@angular/core';
 import {By} from '@angular/platform-browser';
 import {MdCheckbox, MdCheckboxChange, MdCheckboxModule} from './index';
@@ -21,7 +21,7 @@ describe('MdCheckbox', () => {
 
   beforeEach(async(() => {
     TestBed.configureTestingModule({
-      imports: [MdCheckboxModule.forRoot(), FormsModule, ReactiveFormsModule],
+      imports: [MdCheckboxModule, FormsModule, ReactiveFormsModule],
       declarations: [
         SingleCheckbox,
         CheckboxWithFormDirectives,
@@ -32,6 +32,7 @@ describe('MdCheckbox', () => {
         CheckboxWithNameAttribute,
         CheckboxWithChangeEvent,
         CheckboxWithFormControl,
+        CheckboxWithoutLabel,
       ],
       providers: [
         {provide: ViewportRuler, useClass: FakeViewportRuler}
@@ -436,28 +437,28 @@ describe('MdCheckbox', () => {
       it('should apply class based on color attribute', () => {
         testComponent.checkboxColor = 'primary';
         fixture.detectChanges();
-        expect(checkboxDebugElement.nativeElement.classList.contains('mat-primary')).toBe(true);
+        expect(checkboxNativeElement.classList.contains('mat-primary')).toBe(true);
 
         testComponent.checkboxColor = 'accent';
         fixture.detectChanges();
-        expect(checkboxDebugElement.nativeElement.classList.contains('mat-accent')).toBe(true);
+        expect(checkboxNativeElement.classList.contains('mat-accent')).toBe(true);
       });
 
       it('should should not clear previous defined classes', () => {
-        checkboxDebugElement.nativeElement.classList.add('custom-class');
+        checkboxNativeElement.classList.add('custom-class');
 
         testComponent.checkboxColor = 'primary';
         fixture.detectChanges();
 
-        expect(checkboxDebugElement.nativeElement.classList.contains('mat-primary')).toBe(true);
-        expect(checkboxDebugElement.nativeElement.classList.contains('custom-class')).toBe(true);
+        expect(checkboxNativeElement.classList.contains('mat-primary')).toBe(true);
+        expect(checkboxNativeElement.classList.contains('custom-class')).toBe(true);
 
         testComponent.checkboxColor = 'accent';
         fixture.detectChanges();
 
-        expect(checkboxDebugElement.nativeElement.classList.contains('mat-primary')).toBe(false);
-        expect(checkboxDebugElement.nativeElement.classList.contains('mat-accent')).toBe(true);
-        expect(checkboxDebugElement.nativeElement.classList.contains('custom-class')).toBe(true);
+        expect(checkboxNativeElement.classList.contains('mat-primary')).toBe(false);
+        expect(checkboxNativeElement.classList.contains('mat-accent')).toBe(true);
+        expect(checkboxNativeElement.classList.contains('custom-class')).toBe(true);
 
       });
     });
@@ -691,11 +692,11 @@ describe('MdCheckbox', () => {
       flushMicrotasks();
 
       let checkboxElement = fixture.debugElement.query(By.directive(MdCheckbox));
-      let ngControl = <NgControl> checkboxElement.injector.get(NgControl);
+      let ngModel = checkboxElement.injector.get<NgModel>(NgModel);
 
-      expect(ngControl.valid).toBe(true);
-      expect(ngControl.pristine).toBe(true);
-      expect(ngControl.touched).toBe(false);
+      expect(ngModel.valid).toBe(true);
+      expect(ngModel.pristine).toBe(true);
+      expect(ngModel.touched).toBe(false);
 
       // TODO(jelbourn): test that `touched` and `pristine` state are modified appropriately.
       // This is currently blocked on issues with async() and fakeAsync().
@@ -730,7 +731,6 @@ describe('MdCheckbox', () => {
     });
   });
 
-
   describe('with form control', () => {
     let checkboxDebugElement: DebugElement;
     let checkboxInstance: MdCheckbox;
@@ -763,6 +763,22 @@ describe('MdCheckbox', () => {
       expect(inputElement.disabled).toBe(false);
     });
   });
+
+  describe('without label', () => {
+    let checkboxDebugElement: DebugElement;
+    let checkboxNativeElement: HTMLElement;
+
+    it('should add a css class to inner-container to remove side margin', () => {
+      fixture = TestBed.createComponent(CheckboxWithoutLabel);
+      fixture.detectChanges();
+      checkboxDebugElement = fixture.debugElement.query(By.directive(MdCheckbox));
+      checkboxNativeElement = checkboxDebugElement.nativeElement;
+
+      let checkboxInnerContainerWithoutMarginCount = checkboxNativeElement
+          .querySelectorAll('.mat-checkbox-inner-container-no-side-margin').length;
+      expect(checkboxInnerContainerWithoutMarginCount).toBe(1);
+    });
+  });
 });
 
 /** Simple component for testing a single checkbox. */
@@ -779,7 +795,6 @@ describe('MdCheckbox', () => {
         [color]="checkboxColor"
         [disableRipple]="disableRipple"
         [value]="checkboxValue"
-        (change)="changeCount = changeCount + 1"
         (click)="onCheckboxClick($event)"
         (change)="onCheckboxChange($event)">
       Simple checkbox
@@ -796,7 +811,6 @@ class SingleCheckbox {
   parentElementClicked: boolean = false;
   parentElementKeyedUp: boolean = false;
   lastKeydownEvent: Event = null;
-  changeCount: number = 0;
   checkboxColor: string = 'primary';
   checkboxValue: string = 'single_checkbox';
 
@@ -872,3 +886,9 @@ class CheckboxWithChangeEvent {
 class CheckboxWithFormControl {
   formControl = new FormControl();
 }
+
+/** Test component without label */
+@Component({
+  template: `<md-checkbox></md-checkbox>`
+})
+class CheckboxWithoutLabel {}

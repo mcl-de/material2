@@ -6,6 +6,7 @@
 @import '../../card/card-theme';
 @import '../../checkbox/checkbox-theme';
 @import '../../chips/chips-theme';
+@import '../../datepicker/datepicker-theme';
 @import '../../dialog/dialog-theme';
 @import '../../grid-list/grid-list-theme';
 @import '../../icon/icon-theme';
@@ -22,6 +23,7 @@
 @import '../../tabs/tabs-theme';
 @import '../../toolbar/toolbar-theme';
 @import '../../tooltip/tooltip-theme';
+@import '../../snack-bar/simple-snack-bar-theme';
 
 
 // Create a theme.
@@ -33,6 +35,7 @@
   @include mat-card-theme($theme);
   @include mat-checkbox-theme($theme);
   @include mat-chips-theme($theme);
+  @include mat-datepicker-theme($theme);
   @include mat-dialog-theme($theme);
   @include mat-grid-list-theme($theme);
   @include mat-icon-theme($theme);
@@ -49,4 +52,5 @@
   @include mat-tabs-theme($theme);
   @include mat-toolbar-theme($theme);
   @include mat-tooltip-theme($theme);
+  @include mat-simple-snack-bar-theme($theme);
 }

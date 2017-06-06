@@ -21,7 +21,7 @@ describe('Portals', () => {
 
   beforeEach(async(() => {
     TestBed.configureTestingModule({
-      imports: [PortalModule.forRoot(), PortalTestModule],
+      imports: [PortalModule, PortalTestModule],
     });
 
     TestBed.compileComponents();
@@ -244,7 +244,7 @@ describe('Portals', () => {
 
       let componentInstance: PizzaMsg = portal.attach(host).instance;
 
-      expect(componentInstance).toEqual(jasmine.any(PizzaMsg));
+      expect(componentInstance instanceof PizzaMsg).toBe(true);
       expect(someDomElement.textContent).toContain('Pizza');
 
       host.detach();
@@ -263,7 +263,7 @@ describe('Portals', () => {
       let componentInstance: PizzaMsg = portal.attach(host).instance;
       fixture.detectChanges();
 
-      expect(componentInstance).toEqual(jasmine.any(PizzaMsg));
+      expect(componentInstance instanceof PizzaMsg).toBe(true);
       expect(someDomElement.textContent).toContain('Pizza');
       expect(someDomElement.textContent).toContain('Chocolate');
 
@@ -342,8 +342,8 @@ describe('Portals', () => {
 
       let componentInstance: PizzaMsg = portal.attach(host).instance;
 
-      expect(componentInstance)
-          .toEqual(jasmine.any(PizzaMsg), 'Expected a PizzaMsg component to be created');
+      expect(componentInstance instanceof PizzaMsg)
+          .toBe(true, 'Expected a PizzaMsg component to be created');
       expect(someDomElement.textContent)
           .toContain('Pizza', 'Expected the static string "Pizza" in the DomPortalHost.');
 
@@ -382,7 +382,7 @@ class ChocolateInjector {
   constructor(public parentInjector: Injector) { }
 
   get(token: any) {
-    return token === Chocolate ? new Chocolate() : this.parentInjector.get(token);
+    return token === Chocolate ? new Chocolate() : this.parentInjector.get<any>(token);
   }
 }
 
