@@ -1,42 +1,46 @@
 import {inject, async, TestBed} from '@angular/core/testing';
 import {SafeResourceUrl, DomSanitizer} from '@angular/platform-browser';
-import {XHRBackend} from '@angular/http';
+import {HttpModule, XHRBackend} from '@angular/http';
 import {MockBackend} from '@angular/http/testing';
 import {Component} from '@angular/core';
 import {MdIconModule} from './index';
-import {MdIconRegistry} from './icon-registry';
+import {MdIconRegistry, getMdIconNoHttpProviderError} from './icon-registry';
 import {getFakeSvgHttpResponse} from './fake-svgs';
+import {wrappedErrorMessage} from '../core/testing/wrapped-error-message';
 
 
 /** Returns the CSS classes assigned to an element as a sorted array. */
-const sortedClassNames = (elem: Element) => elem.className.split(' ').sort();
+function sortedClassNames(element: Element): string[] {
+  return element.className.split(' ').sort();
+}
 
 /**
  * Verifies that an element contains a single <svg> child element, and returns that child.
  */
-const verifyAndGetSingleSvgChild = (element: SVGElement): any => {
+function verifyAndGetSingleSvgChild(element: SVGElement): SVGElement {
   expect(element.childNodes.length).toBe(1);
-  const svgChild = <Element>element.childNodes[0];
+  const svgChild = element.childNodes[0] as SVGElement;
   expect(svgChild.tagName.toLowerCase()).toBe('svg');
   return svgChild;
-};
+}
 
 /**
  * Verifies that an element contains a single <path> child element whose "id" attribute has
  * the specified value.
  */
-const verifyPathChildElement = (element: Element, attributeValue: string) => {
+function verifyPathChildElement(element: Element, attributeValue: string): void {
   expect(element.childNodes.length).toBe(1);
-  const pathElement = <Element>element.childNodes[0];
+  const pathElement = element.childNodes[0] as SVGPathElement;
   expect(pathElement.tagName.toLowerCase()).toBe('path');
   expect(pathElement.getAttribute('id')).toBe(attributeValue);
-};
+}
+
 
 describe('MdIcon', () => {
 
   beforeEach(async(() => {
     TestBed.configureTestingModule({
-      imports: [MdIconModule.forRoot()],
+      imports: [HttpModule, MdIconModule],
       declarations: [
         MdIconColorTestApp,
         MdIconLigatureTestApp,
@@ -239,6 +243,25 @@ describe('MdIcon', () => {
       expect(httpRequestUrls.sort()).toEqual(['farm-set-1.svg', 'farm-set-2.svg']);
     });
 
+    it('should unwrap <symbol> nodes', () => {
+      mdIconRegistry.addSvgIconSetInNamespace('farm', trust('farm-set-3.svg'));
+
+      const fixture = TestBed.createComponent(MdIconFromSvgNameTestApp);
+      const testComponent = fixture.componentInstance;
+      const mdIconElement = fixture.debugElement.nativeElement.querySelector('md-icon');
+
+      testComponent.iconName = 'farm:duck';
+      fixture.detectChanges();
+
+      const svgElement = verifyAndGetSingleSvgChild(mdIconElement);
+      const firstChild = svgElement.childNodes[0];
+
+      expect(svgElement.querySelector('symbol')).toBeFalsy();
+      expect(svgElement.childNodes.length).toBe(1);
+      expect(firstChild.nodeName.toLowerCase()).toBe('path');
+      expect((firstChild as HTMLElement).getAttribute('id')).toBe('quack');
+    });
+
     it('should not wrap <svg> elements in icon sets in another svg tag', () => {
       mdIconRegistry.addSvgIconSet(trust('arrow-set.svg'));
 
@@ -391,6 +414,39 @@ describe('MdIcon', () => {
   function trust(iconUrl: string): SafeResourceUrl {
     return sanitizer.bypassSecurityTrustResourceUrl(iconUrl);
   }
+});
+
+
+describe('MdIcon without HttpModule', () => {
+  let mdIconRegistry: MdIconRegistry;
+  let sanitizer: DomSanitizer;
+
+  beforeEach(async(() => {
+    TestBed.configureTestingModule({
+      imports: [MdIconModule],
+      declarations: [MdIconFromSvgNameTestApp],
+    });
+
+    TestBed.compileComponents();
+  }));
+
+  beforeEach(inject([MdIconRegistry, DomSanitizer], (mir: MdIconRegistry, ds: DomSanitizer) => {
+    mdIconRegistry = mir;
+    sanitizer = ds;
+  }));
+
+  it('should throw an error when trying to load a remote icon', async() => {
+    const expectedError = wrappedErrorMessage(getMdIconNoHttpProviderError());
+
+    expect(() => {
+      mdIconRegistry.addSvgIcon('fido', sanitizer.bypassSecurityTrustResourceUrl('dog.svg'));
+
+      let fixture = TestBed.createComponent(MdIconFromSvgNameTestApp);
+
+      fixture.componentInstance.iconName = 'fido';
+      fixture.detectChanges();
+    }).toThrowError(expectedError);
+  });
 });
 
 

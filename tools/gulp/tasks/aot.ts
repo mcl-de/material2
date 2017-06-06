@@ -1,15 +1,15 @@
 import {task} from 'gulp';
 import {copySync} from 'fs-extra';
-import {DIST_DEMOAPP, DIST_RELEASES} from '../constants';
+import {DIST_DEMOAPP, DIST_RELEASES} from '../build-config';
 import {sequenceTask, execNodeTask} from '../util/task_helpers';
 import {join} from 'path';
 
 const tsconfigFile = join(DIST_DEMOAPP, 'tsconfig-aot.json');
 
-/** Builds the demo-app and library. To be able to run NGC, apply the metadata workaround. */
+/** Builds the demo-app and material. To be able to run NGC, apply the metadata workaround. */
 task('aot:deps', sequenceTask(
   'build:devapp',
-  [':package:release', 'cdk:build-release'],
+  ['material:build-release', 'cdk:build-release'],
   'aot:copy-release'
 ));
 

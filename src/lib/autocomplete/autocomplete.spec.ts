@@ -10,34 +10,40 @@ import {
 } from '@angular/core';
 import {By} from '@angular/platform-browser';
 import {NoopAnimationsModule} from '@angular/platform-browser/animations';
-import {MdAutocompleteModule, MdAutocompleteTrigger} from './index';
+import {FormControl, FormsModule, ReactiveFormsModule} from '@angular/forms';
+import {
+  MdAutocompleteModule,
+  MdAutocompleteTrigger,
+  MdAutocomplete,
+  getMdAutocompleteMissingPanelError,
+} from './index';
 import {OverlayContainer} from '../core/overlay/overlay-container';
 import {MdInputModule} from '../input/index';
 import {Dir, LayoutDirection} from '../core/rtl/dir';
-import {FormControl, FormsModule, ReactiveFormsModule} from '@angular/forms';
 import {Subscription} from 'rxjs/Subscription';
-import {ENTER, DOWN_ARROW, SPACE, UP_ARROW, HOME, END} from '../core/keyboard/keycodes';
+import {ENTER, DOWN_ARROW, SPACE, UP_ARROW, ESCAPE} from '../core/keyboard/keycodes';
 import {MdOption} from '../core/option/option';
-import {ViewportRuler} from '../core/overlay/position/viewport-ruler';
-import {FakeViewportRuler} from '../core/overlay/position/fake-viewport-ruler';
-import {MdAutocomplete} from './autocomplete';
 import {MdInputContainer} from '../input/input-container';
 import {Observable} from 'rxjs/Observable';
+import {Subject} from 'rxjs/Subject';
 import {dispatchFakeEvent} from '../core/testing/dispatch-events';
+import {createKeyboardEvent} from '../core/testing/event-objects';
 import {typeInElement} from '../core/testing/type-in-element';
-
+import {ScrollDispatcher} from '../core/overlay/scroll/scroll-dispatcher';
 import 'rxjs/add/operator/map';
+
 
 describe('MdAutocomplete', () => {
   let overlayContainerElement: HTMLElement;
   let dir: LayoutDirection;
+  let scrolledSubject = new Subject();
 
   beforeEach(async(() => {
     dir = 'ltr';
     TestBed.configureTestingModule({
       imports: [
-        MdAutocompleteModule.forRoot(),
-        MdInputModule.forRoot(),
+        MdAutocompleteModule,
+        MdInputModule,
         FormsModule,
         ReactiveFormsModule,
         NoopAnimationsModule
@@ -47,11 +53,15 @@ describe('MdAutocomplete', () => {
         AutocompleteWithoutForms,
         NgIfAutocomplete,
         AutocompleteWithNgModel,
-        AutocompleteWithOnPushDelay
+        AutocompleteWithOnPushDelay,
+        AutocompleteWithNativeInput,
+        AutocompleteWithoutPanel
       ],
       providers: [
         {provide: OverlayContainer, useFactory: () => {
           overlayContainerElement = document.createElement('div');
+          overlayContainerElement.classList.add('cdk-overlay-container');
+
           document.body.appendChild(overlayContainerElement);
 
           // remove body padding to keep consistent cross-browser
@@ -60,15 +70,21 @@ describe('MdAutocomplete', () => {
 
           return {getContainerElement: () => overlayContainerElement};
         }},
-        {provide: Dir, useFactory: () => {
-          return {value: dir};
-        }},
-        {provide: ViewportRuler, useClass: FakeViewportRuler}
+        {provide: Dir, useFactory: () => ({value: dir})},
+        {provide: ScrollDispatcher, useFactory: () => {
+          return {scrolled: (delay: number, callback: () => any) => {
+            return scrolledSubject.asObservable().subscribe(callback);
+          }};
+        }}
       ]
     });
 
     TestBed.compileComponents();
   }));
+
+  afterEach(() => {
+    document.body.removeChild(overlayContainerElement);
+  });
 
   describe('panel toggling', () => {
     let fixture: ComponentFixture<SimpleAutocomplete>;
@@ -525,8 +541,8 @@ describe('MdAutocomplete', () => {
       fixture.detectChanges();
 
       input = fixture.debugElement.query(By.css('input')).nativeElement;
-      DOWN_ARROW_EVENT = new MockKeyboardEvent(DOWN_ARROW) as KeyboardEvent;
-      ENTER_EVENT = new MockKeyboardEvent(ENTER) as KeyboardEvent;
+      DOWN_ARROW_EVENT = createKeyboardEvent('keydown', DOWN_ARROW);
+      ENTER_EVENT = createKeyboardEvent('keydown', ENTER);
 
       fixture.componentInstance.trigger.openPanel();
       fixture.detectChanges();
@@ -584,7 +600,7 @@ describe('MdAutocomplete', () => {
       const optionEls =
           overlayContainerElement.querySelectorAll('md-option') as NodeListOf<HTMLElement>;
 
-      const UP_ARROW_EVENT = new MockKeyboardEvent(UP_ARROW) as KeyboardEvent;
+      const UP_ARROW_EVENT = createKeyboardEvent('keydown', UP_ARROW);
       fixture.componentInstance.trigger._handleKeydown(UP_ARROW_EVENT);
       tick();
       fixture.detectChanges();
@@ -658,7 +674,7 @@ describe('MdAutocomplete', () => {
         typeInElement('New', input);
         fixture.detectChanges();
 
-        const SPACE_EVENT = new MockKeyboardEvent(SPACE) as KeyboardEvent;
+        const SPACE_EVENT = createKeyboardEvent('keydown', SPACE);
         fixture.componentInstance.trigger._handleKeydown(DOWN_ARROW_EVENT);
 
         fixture.whenStable().then(() => {
@@ -738,7 +754,7 @@ describe('MdAutocomplete', () => {
       const scrollContainer =
           document.querySelector('.cdk-overlay-pane .mat-autocomplete-panel');
 
-      const UP_ARROW_EVENT = new MockKeyboardEvent(UP_ARROW) as KeyboardEvent;
+      const UP_ARROW_EVENT = createKeyboardEvent('keydown', UP_ARROW);
       fixture.componentInstance.trigger._handleKeydown(UP_ARROW_EVENT);
       tick();
       fixture.detectChanges();
@@ -747,34 +763,21 @@ describe('MdAutocomplete', () => {
       expect(scrollContainer.scrollTop).toEqual(272, `Expected panel to reveal last option.`);
     }));
 
-    it('should scroll the active option into view when pressing END', fakeAsync(() => {
-      tick();
-      const scrollContainer =
-          document.querySelector('.cdk-overlay-pane .mat-autocomplete-panel');
+    it('should close the panel when pressing escape', async(() => {
+      const trigger = fixture.componentInstance.trigger;
+      const escapeEvent = createKeyboardEvent('keydown', ESCAPE);
 
-      const END_EVENT = new MockKeyboardEvent(END) as KeyboardEvent;
-      fixture.componentInstance.trigger._handleKeydown(END_EVENT);
-      tick();
-      fixture.detectChanges();
+      input.focus();
 
-      // Expect option bottom minus the panel height (528 - 256 = 272)
-      expect(scrollContainer.scrollTop).toEqual(272, 'Expected panel to reveal the last option.');
-    }));
+      fixture.whenStable().then(() => {
+        expect(document.activeElement).toBe(input, 'Expected input to be focused.');
+        expect(trigger.panelOpen).toBe(true, 'Expected panel to be open.');
 
-    it('should scroll the active option into view when pressing HOME', fakeAsync(() => {
-      tick();
-      const scrollContainer =
-          document.querySelector('.cdk-overlay-pane .mat-autocomplete-panel');
+        trigger._handleKeydown(escapeEvent);
 
-      scrollContainer.scrollTop = 100;
-      fixture.detectChanges();
-
-      const HOME_EVENT = new MockKeyboardEvent(HOME) as KeyboardEvent;
-      fixture.componentInstance.trigger._handleKeydown(HOME_EVENT);
-      tick();
-      fixture.detectChanges();
-
-      expect(scrollContainer.scrollTop).toEqual(0, 'Expected panel to reveal the first option.');
+        expect(document.activeElement).toBe(input, 'Expected input to continue to be focused.');
+        expect(trigger.panelOpen).toBe(false, 'Expected panel to be closed.');
+      });
     }));
 
   });
@@ -822,7 +825,7 @@ describe('MdAutocomplete', () => {
         expect(input.hasAttribute('aria-activedescendant'))
             .toBe(false, 'Expected aria-activedescendant to be absent if no active item.');
 
-        const DOWN_ARROW_EVENT = new MockKeyboardEvent(DOWN_ARROW) as KeyboardEvent;
+        const DOWN_ARROW_EVENT = createKeyboardEvent('keydown', DOWN_ARROW);
         fixture.componentInstance.trigger._handleKeydown(DOWN_ARROW_EVENT);
 
         fixture.whenStable().then(() => {
@@ -897,6 +900,22 @@ describe('MdAutocomplete', () => {
 
     });
 
+    it('should restore focus to the input when clicking to select a value', async(() => {
+      fixture.componentInstance.trigger.openPanel();
+      fixture.detectChanges();
+
+      fixture.whenStable().then(() => {
+        const option = overlayContainerElement.querySelector('md-option') as HTMLElement;
+
+        // Focus the option manually since the synthetic click may not do it.
+        option.focus();
+        option.click();
+        fixture.detectChanges();
+
+        expect(document.activeElement).toBe(input, 'Expected focus to be restored to the input.');
+      });
+    }));
+
   });
 
   describe('Fallback positions', () => {
@@ -919,10 +938,33 @@ describe('MdAutocomplete', () => {
       const panelTop = panel.getBoundingClientRect().top;
 
       // Panel is offset by 6px in styles so that the underline has room to display.
-      expect((inputBottom + 6).toFixed(1))
-          .toEqual(panelTop.toFixed(1), `Expected panel top to match input bottom by default.`);
+      expect(Math.floor(inputBottom + 6))
+          .toEqual(Math.floor(panelTop), `Expected panel top to match input bottom by default.`);
       expect(fixture.componentInstance.trigger.autocomplete.positionY)
           .toEqual('below', `Expected autocomplete positionY to default to below.`);
+    });
+
+    it('should reposition the panel on scroll', () => {
+      const spacer = document.createElement('div');
+
+      spacer.style.height = '1000px';
+      document.body.appendChild(spacer);
+
+      fixture.componentInstance.trigger.openPanel();
+      fixture.detectChanges();
+
+      window.scroll(0, 100);
+      scrolledSubject.next();
+      fixture.detectChanges();
+
+      const inputBottom = input.getBoundingClientRect().bottom;
+      const panel = overlayContainerElement.querySelector('.mat-autocomplete-panel');
+      const panelTop = panel.getBoundingClientRect().top;
+
+      expect(Math.floor(inputBottom + 6)).toEqual(Math.floor(panelTop),
+          'Expected panel top to match input bottom after scrolling.');
+
+      document.body.removeChild(spacer);
     });
 
     it('should fall back to above position if panel cannot fit below', () => {
@@ -938,8 +980,8 @@ describe('MdAutocomplete', () => {
       const panelBottom = panel.getBoundingClientRect().bottom;
 
       // Panel is offset by 24px in styles so that the label has room to display.
-      expect((inputTop - 24).toFixed(1))
-          .toEqual(panelBottom.toFixed(1), `Expected panel to fall back to above position.`);
+      expect(Math.floor(inputTop - 24))
+          .toEqual(Math.floor(panelBottom), `Expected panel to fall back to above position.`);
       expect(fixture.componentInstance.trigger.autocomplete.positionY)
           .toEqual('above', `Expected autocomplete positionY to be "above" if panel won't fit.`);
     });
@@ -961,8 +1003,8 @@ describe('MdAutocomplete', () => {
         const panelBottom = panel.getBoundingClientRect().bottom;
 
         // Panel is offset by 24px in styles so that the label has room to display.
-        expect((inputTop - 24).toFixed(1))
-            .toEqual(panelBottom.toFixed(1), `Expected panel to stay aligned after filtering.`);
+        expect(Math.floor(inputTop - 24))
+            .toEqual(Math.floor(panelBottom), `Expected panel to stay aligned after filtering.`);
         expect(fixture.componentInstance.trigger.autocomplete.positionY)
             .toEqual('above', `Expected autocomplete positionY to be "above" if panel won't fit.`);
       });
@@ -1033,6 +1075,24 @@ describe('MdAutocomplete', () => {
     }));
   });
 
+  describe('without mdInput', () => {
+    let fixture: ComponentFixture<AutocompleteWithNativeInput>;
+
+    beforeEach(() => {
+      fixture = TestBed.createComponent(AutocompleteWithNativeInput);
+      fixture.detectChanges();
+    });
+
+    it('should not throw when clicking outside', async(() => {
+      dispatchFakeEvent(fixture.debugElement.query(By.css('input')).nativeElement, 'focus');
+      fixture.detectChanges();
+
+      fixture.whenStable().then(() => {
+        expect(() => dispatchFakeEvent(document, 'click')).not.toThrow();
+      });
+    }));
+  });
+
   describe('misc', () => {
 
     it('should allow basic use without any forms directives', () => {
@@ -1089,7 +1149,7 @@ describe('MdAutocomplete', () => {
       tick();
       fixture.detectChanges();
 
-      const DOWN_ARROW_EVENT = new MockKeyboardEvent(DOWN_ARROW) as KeyboardEvent;
+      const DOWN_ARROW_EVENT = createKeyboardEvent('keydown', DOWN_ARROW);
       fixture.componentInstance.trigger._handleKeydown(DOWN_ARROW_EVENT);
       tick();
       fixture.detectChanges();
@@ -1099,6 +1159,15 @@ describe('MdAutocomplete', () => {
       fixture.detectChanges();
 
       expect(fixture.componentInstance.mdOptions.length).toBe(2);
+    }));
+
+    it('should throw if the user attempts to open the panel too early', async(() => {
+      const fixture = TestBed.createComponent(AutocompleteWithoutPanel);
+      fixture.detectChanges();
+
+      expect(() => {
+        fixture.componentInstance.trigger.openPanel();
+      }).toThrow(getMdAutocompleteMissingPanelError());
     }));
 
   });
@@ -1113,7 +1182,7 @@ describe('MdAutocomplete', () => {
 
     const overlayPane = overlayContainerElement.querySelector('.cdk-overlay-pane') as HTMLElement;
     // Firefox, edge return a decimal value for width, so we need to parse and round it to verify
-    expect(Math.ceil(parseFloat(overlayPane.style.width))).toEqual(300);
+    expect(Math.ceil(parseFloat(overlayPane.style.width))).toBe(300);
 
     widthFixture.componentInstance.trigger.closePanel();
     widthFixture.detectChanges();
@@ -1125,8 +1194,31 @@ describe('MdAutocomplete', () => {
     widthFixture.detectChanges();
 
     // Firefox, edge return a decimal value for width, so we need to parse and round it to verify
-    expect(Math.ceil(parseFloat(overlayPane.style.width))).toEqual(500);
+    expect(Math.ceil(parseFloat(overlayPane.style.width))).toBe(500);
+  });
 
+  it('should update the width while the panel is open', () => {
+    const widthFixture = TestBed.createComponent(SimpleAutocomplete);
+
+    widthFixture.componentInstance.width = 300;
+    widthFixture.detectChanges();
+
+    widthFixture.componentInstance.trigger.openPanel();
+    widthFixture.detectChanges();
+
+    const overlayPane = overlayContainerElement.querySelector('.cdk-overlay-pane') as HTMLElement;
+    const input = widthFixture.debugElement.query(By.css('input')).nativeElement;
+
+    expect(Math.ceil(parseFloat(overlayPane.style.width))).toBe(300);
+
+    widthFixture.componentInstance.width = 500;
+    widthFixture.detectChanges();
+
+    input.focus();
+    dispatchFakeEvent(input, 'input');
+    widthFixture.detectChanges();
+
+    expect(Math.ceil(parseFloat(overlayPane.style.width))).toBe(500);
   });
 
   it('should show the panel when the options are initialized later within a component with ' +
@@ -1318,9 +1410,37 @@ class AutocompleteWithOnPushDelay implements OnInit {
   }
 }
 
+@Component({
+  template: `
+    <input placeholder="Choose" [mdAutocomplete]="auto" [formControl]="optionCtrl">
 
-/** This is a mock keyboard event to test keyboard events in the autocomplete. */
-class MockKeyboardEvent {
-  constructor(public keyCode: number) {}
-  preventDefault() {}
+    <md-autocomplete #auto="mdAutocomplete">
+      <md-option *ngFor="let option of filteredOptions | async" [value]="option">
+         {{option}}
+      </md-option>
+    </md-autocomplete>
+  `
+})
+class AutocompleteWithNativeInput {
+  optionCtrl = new FormControl();
+  filteredOptions: Observable<any>;
+  options = ['En', 'To', 'Tre', 'Fire', 'Fem'];
+
+  @ViewChild(MdAutocompleteTrigger) trigger: MdAutocompleteTrigger;
+  @ViewChildren(MdOption) mdOptions: QueryList<MdOption>;
+
+  constructor() {
+    this.filteredOptions = this.optionCtrl.valueChanges.startWith(null).map((val) => {
+      return val ? this.options.filter(option => new RegExp(val, 'gi').test(option))
+                 : this.options.slice();
+    });
+  }
+}
+
+
+@Component({
+  template: `<input placeholder="Choose" [mdAutocomplete]="auto">`
+})
+class AutocompleteWithoutPanel {
+  @ViewChild(MdAutocompleteTrigger) trigger: MdAutocompleteTrigger;
 }

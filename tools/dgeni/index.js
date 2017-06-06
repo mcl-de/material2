@@ -35,8 +35,6 @@ const dgeniPackageDeps = [
 
 let apiDocsPackage = new DgeniPackage('material2-api-docs', dgeniPackageDeps)
 
-.processor(require('./processors/link-inherited-docs'))
-
 // Processor that filters out symbols that should not be shown in the docs.
 .processor(require('./processors/docs-private-filter'))
 
@@ -91,6 +89,7 @@ let apiDocsPackage = new DgeniPackage('material2-api-docs', dgeniPackageDeps)
     'checkbox/index.ts',
     'chips/index.ts',
     'core/index.ts',
+    'datepicker/index.ts',
     'dialog/index.ts',
     'grid-list/index.ts',
     'icon/index.ts',

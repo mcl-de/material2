@@ -8,6 +8,7 @@ import {
   ElementRef,
   Optional,
   AfterViewChecked,
+  ViewEncapsulation,
 } from '@angular/core';
 import {
   trigger,
@@ -50,11 +51,13 @@ export type MdTabBodyOriginState = 'left' | 'right';
   selector: 'md-tab-body, mat-tab-body',
   templateUrl: 'tab-body.html',
   styleUrls: ['tab-body.css'],
+  encapsulation: ViewEncapsulation.None,
   host: {
     '[class.mat-tab-body]': 'true',
   },
   animations: [
     trigger('translateTab', [
+      state('void', style({transform: 'translate3d(0, 0, 0)'})),
       state('left', style({transform: 'translate3d(-100%, 0, 0)'})),
       state('left-origin-center', style({transform: 'translate3d(0, 0, 0)'})),
       state('right-origin-center', style({transform: 'translate3d(0, 0, 0)'})),
@@ -78,12 +81,10 @@ export class MdTabBody implements OnInit, AfterViewChecked {
   @ViewChild(PortalHostDirective) _portalHost: PortalHostDirective;
 
   /** Event emitted when the tab begins to animate towards the center as the active tab. */
-  @Output()
-  onCentering: EventEmitter<number> = new EventEmitter<number>();
+  @Output() onCentering: EventEmitter<number> = new EventEmitter<number>();
 
   /** Event emitted when the tab completes its animation towards the center. */
-  @Output()
-  onCentered: EventEmitter<void> = new EventEmitter<void>(true);
+  @Output() onCentered: EventEmitter<void> = new EventEmitter<void>(true);
 
   /** The tab body content to display. */
   @Input('content') _content: TemplatePortal;

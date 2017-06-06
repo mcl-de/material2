@@ -1,22 +1,28 @@
 import {task} from 'gulp';
 import {join} from 'path';
 import {statSync} from 'fs';
-import {DIST_ROOT} from '../constants';
+import {DIST_ROOT} from '../build-config';
 import {spawnSync} from 'child_process';
 import {isTravisMasterBuild} from '../util/travis-ci';
-import {openFirebaseDashboardDatabase} from '../util/firebase';
+import {openFirebaseDashboardApp} from '../util/firebase';
 
 const bundlesDir = join(DIST_ROOT, 'bundles');
 
-/** Task which runs test against the size of whole library. */
-task('payload', ['library:clean-build'], () => {
+/** Task which runs test against the size of material. */
+task('payload', ['material:clean-build'], () => {
 
   let results = {
-    umd_kb: getBundleSize('material.umd.js'),
-    umd_minified_uglify_kb: getBundleSize('material.umd.min.js'),
-    fesm_2015: getBundleSize('material.js'),
-    fesm_2014: getBundleSize('material.es5.js'),
-    timestamp: Date.now()
+    timestamp: Date.now(),
+    // Material bundles
+    material_umd: getBundleSize('material.umd.js'),
+    material_umd_minified_uglify: getBundleSize('material.umd.min.js'),
+    material_fesm_2015: getBundleSize('material.js'),
+    material_fesm_2014: getBundleSize('material.es5.js'),
+    // CDK bundles
+    cdk_umd: getBundleSize('cdk.umd.js'),
+    cdk_umd_minified_uglify: getBundleSize('cdk.umd.min.js'),
+    cdk_fesm_2015: getBundleSize('cdk.js'),
+    cdk_fesm_2014: getBundleSize('cdk.es5.js'),
   };
 
   // Print the results to the console, so we can read it from the CI.
@@ -41,10 +47,12 @@ function getFilesize(filePath: string) {
 
 /** Publishes the given results to the firebase database. */
 function publishResults(results: any) {
-  let latestSha = spawnSync('git', ['rev-parse', 'HEAD']).stdout.toString().trim();
-  let database = openFirebaseDashboardDatabase();
+  const latestSha = spawnSync('git', ['rev-parse', 'HEAD']).stdout.toString().trim();
+  const dashboardApp = openFirebaseDashboardApp();
+  const database = dashboardApp.database();
 
   // Write the results to the payloads object with the latest Git SHA as key.
   return database.ref('payloads').child(latestSha).set(results)
-    .then(() => database.goOffline(), () => database.goOffline());
+    .catch((err: any) => console.error(err))
+    .then(() => dashboardApp.delete());
 }
