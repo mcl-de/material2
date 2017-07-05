@@ -1,8 +1,13 @@
-import {coerceBooleanProperty} from '../coercion/boolean-property';
+/**
+ * @license
+ * Copyright Google Inc. All Rights Reserved.
+ *
+ * Use of this source code is governed by an MIT-style license that can be
+ * found in the LICENSE file at https://angular.io/license
+ */
 
-
-/** @docs-private */
-export type Constructor<T> = new(...args: any[]) => T;
+import {coerceBooleanProperty} from '@angular/cdk';
+import {Constructor} from './constructor';
 
 /** @docs-private */
 export interface CanDisable {

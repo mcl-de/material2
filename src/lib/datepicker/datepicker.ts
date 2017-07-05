@@ -1,3 +1,11 @@
+/**
+ * @license
+ * Copyright Google Inc. All Rights Reserved.
+ *
+ * Use of this source code is governed by an MIT-style license that can be
+ * found in the LICENSE file at https://angular.io/license
+ */
+
 import {
   AfterContentInit,
   ChangeDetectionStrategy,
@@ -12,12 +20,14 @@ import {
   ViewContainerRef,
   ViewEncapsulation,
   NgZone,
+  Inject,
 } from '@angular/core';
+import {DOCUMENT} from '@angular/platform-browser';
 import {Overlay} from '../core/overlay/overlay';
 import {OverlayRef} from '../core/overlay/overlay-ref';
 import {ComponentPortal} from '../core/portal/portal';
 import {OverlayState} from '../core/overlay/overlay-state';
-import {Dir} from '../core/rtl/dir';
+import {Directionality} from '../core/bidi/index';
 import {MdDialog} from '../dialog/dialog';
 import {MdDialogRef} from '../dialog/dialog-ref';
 import {PositionStrategy} from '../core/overlay/position/position-strategy';
@@ -28,7 +38,7 @@ import {DateAdapter} from '../core/datetime/index';
 import {createMissingDateImplError} from './datepicker-errors';
 import {ESCAPE} from '../core/keyboard/keycodes';
 import {MdCalendar} from './calendar';
-import 'rxjs/add/operator/first';
+import {first} from '../core/rxjs/index';
 
 
 /** Used to generate a unique ID for each datepicker instance. */
@@ -69,16 +79,10 @@ export class MdDatepickerContent<D> implements AfterContentInit {
    * @param event The event.
    */
   _handleKeydown(event: KeyboardEvent): void {
-    switch (event.keyCode) {
-      case ESCAPE:
-        this.datepicker.close();
-        break;
-      default:
-        // Return so that we don't preventDefault on keys that are not explicitly handled.
-        return;
+    if (event.keyCode === ESCAPE) {
+      this.datepicker.close();
+      event.preventDefault();
     }
-
-    event.preventDefault();
   }
 }
 
@@ -122,7 +126,7 @@ export class MdDatepicker<D> implements OnDestroy {
   id = `md-datepicker-${datepickerUid++}`;
 
   /** The currently selected date. */
-  _selected: D = null;
+  _selected: D | null = null;
 
   /** The minimum selectable date. */
   get _minDate(): D {
@@ -142,13 +146,16 @@ export class MdDatepicker<D> implements OnDestroy {
   private _popupRef: OverlayRef;
 
   /** A reference to the dialog when the calendar is opened as a dialog. */
-  private _dialogRef: MdDialogRef<any>;
+  private _dialogRef: MdDialogRef<any> | null;
 
   /** A portal containing the calendar for this datepicker. */
   private _calendarPortal: ComponentPortal<MdDatepickerContent<D>>;
 
   /** The input element this datepicker is associated with. */
   private _datepickerInput: MdDatepickerInput<D>;
+
+  /** The element that was focused before the datepicker was opened. */
+  private _focusedElementBeforeOpen: HTMLElement | null = null;
 
   private _inputSubscription: Subscription;
 
@@ -157,11 +164,11 @@ export class MdDatepicker<D> implements OnDestroy {
               private _ngZone: NgZone,
               private _viewContainerRef: ViewContainerRef,
               @Optional() private _dateAdapter: DateAdapter<D>,
-              @Optional() private _dir: Dir) {
+              @Optional() private _dir: Directionality,
+              @Optional() @Inject(DOCUMENT) private _document: any) {
     if (!this._dateAdapter) {
       throw createMissingDateImplError('DateAdapter');
     }
-
   }
 
   ngOnDestroy() {
@@ -190,7 +197,7 @@ export class MdDatepicker<D> implements OnDestroy {
    */
   _registerInput(input: MdDatepickerInput<D>): void {
     if (this._datepickerInput) {
-      throw new Error('An MdDatepicker can only be associated with a single input.');
+      throw Error('An MdDatepicker can only be associated with a single input.');
     }
     this._datepickerInput = input;
     this._inputSubscription =
@@ -203,7 +210,10 @@ export class MdDatepicker<D> implements OnDestroy {
       return;
     }
     if (!this._datepickerInput) {
-      throw new Error('Attempted to open an MdDatepicker with no associated input.');
+      throw Error('Attempted to open an MdDatepicker with no associated input.');
+    }
+    if (this._document) {
+      this._focusedElementBeforeOpen = this._document.activeElement;
     }
 
     this.touchUi ? this._openAsDialog() : this._openAsPopup();
@@ -225,16 +235,21 @@ export class MdDatepicker<D> implements OnDestroy {
     if (this._calendarPortal && this._calendarPortal.isAttached) {
       this._calendarPortal.detach();
     }
+    if (this._focusedElementBeforeOpen && 'focus' in this._focusedElementBeforeOpen) {
+      this._focusedElementBeforeOpen.focus();
+      this._focusedElementBeforeOpen = null;
+    }
+
     this.opened = false;
   }
 
   /** Open the calendar as a dialog. */
   private _openAsDialog(): void {
-    let config = new MdDialogConfig();
-    config.viewContainerRef = this._viewContainerRef;
-
-    this._dialogRef = this._dialog.open(MdDatepickerContent, config);
-    this._dialogRef.afterClosed().first().subscribe(() => this.close());
+    this._dialogRef = this._dialog.open(MdDatepickerContent, {
+      viewContainerRef: this._viewContainerRef,
+      direction: this._dir ? this._dir.value : 'ltr'
+    });
+    this._dialogRef.afterClosed().subscribe(() => this.close());
     this._dialogRef.componentInstance.datepicker = this;
   }
 
@@ -254,10 +269,10 @@ export class MdDatepicker<D> implements OnDestroy {
       componentRef.instance.datepicker = this;
 
       // Update the position once the calendar has rendered.
-      this._ngZone.onStable.first().subscribe(() => this._popupRef.updatePosition());
+      first.call(this._ngZone.onStable).subscribe(() => this._popupRef.updatePosition());
     }
 
-    this._popupRef.backdropClick().first().subscribe(() => this.close());
+    this._popupRef.backdropClick().subscribe(() => this.close());
   }
 
   /** Create the popup. */

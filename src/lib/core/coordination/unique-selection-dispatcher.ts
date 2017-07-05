@@ -1,3 +1,11 @@
+/**
+ * @license
+ * Copyright Google Inc. All Rights Reserved.
+ *
+ * Use of this source code is governed by an MIT-style license that can be
+ * found in the LICENSE file at https://angular.io/license
+ */
+
 import {Injectable, Optional, SkipSelf} from '@angular/core';
 
 
@@ -28,9 +36,17 @@ export class UniqueSelectionDispatcher {
     }
   }
 
-  /** Listen for future changes to item selection. */
-  listen(listener: UniqueSelectionDispatcherListener) {
+  /**
+   * Listen for future changes to item selection.
+   * @return Function used to deregister listener
+   **/
+  listen(listener: UniqueSelectionDispatcherListener): () => void {
     this._listeners.push(listener);
+    return () => {
+      this._listeners = this._listeners.filter((registered: UniqueSelectionDispatcherListener) => {
+        return listener !== registered;
+      });
+    };
   }
 }
 

@@ -1,12 +1,24 @@
-import {Directive, Input} from '@angular/core';
-import {MdDialogRef} from './dialog-ref';
+/**
+ * @license
+ * Copyright Google Inc. All Rights Reserved.
+ *
+ * Use of this source code is governed by an MIT-style license that can be
+ * found in the LICENSE file at https://angular.io/license
+ */
 
+import {Directive, Input, Optional, OnInit} from '@angular/core';
+import {MdDialogRef} from './dialog-ref';
+import {MdDialogContainer} from './dialog-container';
+
+/** Counter used to generate unique IDs for dialog elements. */
+let dialogElementUid = 0;
 
 /**
  * Button that will close the current dialog.
  */
 @Directive({
-  selector: 'button[md-dialog-close], button[mat-dialog-close]',
+  selector: 'button[md-dialog-close], button[mat-dialog-close],' +
+            'button[mdDialogClose], button[matDialogClose]',
   host: {
     '(click)': 'dialogRef.close(dialogResult)',
     '[attr.aria-label]': 'ariaLabel',
@@ -30,22 +42,32 @@ export class MdDialogClose {
  * Title of a dialog element. Stays fixed to the top of the dialog when scrolling.
  */
 @Directive({
-  selector: '[md-dialog-title], [mat-dialog-title]',
+  selector: '[md-dialog-title], [mat-dialog-title], [mdDialogTitle], [matDialogTitle]',
   host: {
-    '[class.mat-dialog-title]': 'true'
-  }
+    'class': 'mat-dialog-title',
+    '[id]': 'id',
+  },
 })
-export class MdDialogTitle { }
+export class MdDialogTitle implements OnInit {
+  @Input() id = `md-dialog-title-${dialogElementUid++}`;
+
+  constructor(@Optional() private _container: MdDialogContainer) { }
+
+  ngOnInit() {
+    if (this._container && !this._container._ariaLabelledBy) {
+      Promise.resolve().then(() => this._container._ariaLabelledBy = this.id);
+    }
+  }
+}
 
 
 /**
  * Scrollable content container of a dialog.
  */
 @Directive({
-  selector: '[md-dialog-content], md-dialog-content, [mat-dialog-content], mat-dialog-content',
-  host: {
-    '[class.mat-dialog-content]': 'true'
-  }
+  selector: '[md-dialog-content], md-dialog-content, [mat-dialog-content], mat-dialog-content,' +
+            '[mdDialogContent], [matDialogContent]',
+  host: {'class': 'mat-dialog-content'}
 })
 export class MdDialogContent { }
 
@@ -55,9 +77,8 @@ export class MdDialogContent { }
  * Stays fixed to the bottom when scrolling.
  */
 @Directive({
-  selector: '[md-dialog-actions], md-dialog-actions, [mat-dialog-actions], mat-dialog-actions',
-  host: {
-    '[class.mat-dialog-actions]': 'true'
-  }
+  selector: '[md-dialog-actions], md-dialog-actions, [mat-dialog-actions], mat-dialog-actions,' +
+            '[mdDialogActions], [matDialogActions]',
+  host: {'class': 'mat-dialog-actions'}
 })
 export class MdDialogActions { }

@@ -3,6 +3,9 @@
 # Publish material2 docs assets to the material2-docs-content repo
 # material.angular.io will pull from this assets repo to get the latest docs
 
+# The script should immediately exit if any command in the script fails.
+set -e
+
 cd "$(dirname $0)/../../"
 
 docsPath="./dist/docs"
@@ -25,7 +28,7 @@ commitMessage="$(git log --oneline -n 1)"
 # create directory and clone test repo
 rm -rf $repoPath
 mkdir -p $repoPath
-git clone $repoUrl $repoPath
+git clone $repoUrl $repoPath --depth 1
 
 # Clean out repo directory and copy contents of dist/docs into it
 rm -rf $repoPath/*

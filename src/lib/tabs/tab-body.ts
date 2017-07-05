@@ -1,3 +1,11 @@
+/**
+ * @license
+ * Copyright Google Inc. All Rights Reserved.
+ *
+ * Use of this source code is governed by an MIT-style license that can be
+ * found in the LICENSE file at https://angular.io/license
+ */
+
 import {
   ViewChild,
   Component,
@@ -18,8 +26,7 @@ import {
   transition,
   AnimationEvent,
 } from '@angular/animations';
-import {TemplatePortal, PortalHostDirective, Dir, LayoutDirection} from '../core';
-import 'rxjs/add/operator/map';
+import {TemplatePortal, PortalHostDirective, Directionality, Direction} from '../core';
 
 /**
  * These position states are used internally as animation states for the tab body. Setting the
@@ -53,15 +60,15 @@ export type MdTabBodyOriginState = 'left' | 'right';
   styleUrls: ['tab-body.css'],
   encapsulation: ViewEncapsulation.None,
   host: {
-    '[class.mat-tab-body]': 'true',
+    'class': 'mat-tab-body',
   },
   animations: [
     trigger('translateTab', [
-      state('void', style({transform: 'translate3d(0, 0, 0)'})),
+      state('void', style({transform: 'translate3d(0%, 0, 0)'})),
       state('left', style({transform: 'translate3d(-100%, 0, 0)'})),
-      state('left-origin-center', style({transform: 'translate3d(0, 0, 0)'})),
-      state('right-origin-center', style({transform: 'translate3d(0, 0, 0)'})),
-      state('center', style({transform: 'translate3d(0, 0, 0)'})),
+      state('left-origin-center', style({transform: 'translate3d(0%, 0, 0)'})),
+      state('right-origin-center', style({transform: 'translate3d(0%, 0, 0)'})),
+      state('center', style({transform: 'translate3d(0%, 0, 0)'})),
       state('right', style({transform: 'translate3d(100%, 0, 0)'})),
       transition('* => left, * => right, left => center, right => center',
           animate('500ms cubic-bezier(0.35, 0, 0.25, 1)')),
@@ -116,7 +123,8 @@ export class MdTabBody implements OnInit, AfterViewChecked {
     }
   }
 
-  constructor(@Optional() private _dir: Dir, private _elementRef: ElementRef) { }
+  constructor(private _elementRef: ElementRef,
+              @Optional() private _dir: Directionality) { }
 
   /**
    * After initialized, check if the content is centered and has an origin. If so, set the
@@ -157,7 +165,7 @@ export class MdTabBody implements OnInit, AfterViewChecked {
   }
 
   /** The text direction of the containing app. */
-  _getLayoutDirection(): LayoutDirection {
+  _getLayoutDirection(): Direction {
     return this._dir && this._dir.value === 'rtl' ? 'rtl' : 'ltr';
   }
 

@@ -1,3 +1,11 @@
+/**
+ * @license
+ * Copyright Google Inc. All Rights Reserved.
+ *
+ * Use of this source code is governed by an MIT-style license that can be
+ * found in the LICENSE file at https://angular.io/license
+ */
+
 import {
   AfterContentInit,
   ChangeDetectionStrategy,
@@ -11,8 +19,8 @@ import {
 
 import {MdChip} from './chip';
 import {FocusKeyManager} from '../core/a11y/focus-key-manager';
-import {coerceBooleanProperty} from '../core/coercion/boolean-property';
 import {SPACE, LEFT_ARROW, RIGHT_ARROW, TAB} from '../core/keyboard/keycodes';
+import {coerceBooleanProperty} from '@angular/cdk';
 import {Subscription} from 'rxjs/Subscription';
 
 /**
@@ -33,7 +41,7 @@ import {Subscription} from 'rxjs/Subscription';
     // Properties
     '[attr.tabindex]': '_tabIndex',
     'role': 'listbox',
-    '[class.mat-chip-list]': 'true',
+    'class': 'mat-chip-list',
 
     // Events
     '(focus)': 'focus()',
@@ -149,7 +157,7 @@ export class MdChipList implements AfterContentInit, OnDestroy {
 
     let focusedIndex = this._keyManager.activeItemIndex;
 
-    if (this._isValidIndex(focusedIndex)) {
+    if (typeof focusedIndex === 'number' && this._isValidIndex(focusedIndex)) {
       let focusedChip: MdChip = this.chips.toArray()[focusedIndex];
 
       if (focusedChip) {
@@ -195,7 +203,7 @@ export class MdChipList implements AfterContentInit, OnDestroy {
     chip.destroy.subscribe(() => {
       let chipIndex: number = this.chips.toArray().indexOf(chip);
 
-      if (this._isValidIndex(chipIndex)) {
+      if (this._isValidIndex(chipIndex) && chip._hasFocus) {
         // Check whether the chip is the last item
         if (chipIndex < this.chips.length - 1) {
           this._keyManager.setActiveItem(chipIndex);

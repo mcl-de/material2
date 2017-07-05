@@ -1,3 +1,11 @@
+/**
+ * @license
+ * Copyright Google Inc. All Rights Reserved.
+ *
+ * Use of this source code is governed by an MIT-style license that can be
+ * found in the LICENSE file at https://angular.io/license
+ */
+
 import {Subscription} from 'rxjs/Subscription';
 import {ScrollStrategy, getMdScrollStrategyAlreadyAttachedError} from './scroll-strategy';
 import {OverlayRef} from '../overlay-ref';
@@ -19,7 +27,7 @@ export class RepositionScrollStrategy implements ScrollStrategy {
 
   constructor(
     private _scrollDispatcher: ScrollDispatcher,
-    private _config: RepositionScrollStrategyConfig) { }
+    private _config?: RepositionScrollStrategyConfig) { }
 
   attach(overlayRef: OverlayRef) {
     if (this._overlayRef) {

@@ -1,5 +1,13 @@
+/**
+ * @license
+ * Copyright Google Inc. All Rights Reserved.
+ *
+ * Use of this source code is governed by an MIT-style license that can be
+ * found in the LICENSE file at https://angular.io/license
+ */
+
 import {ViewContainerRef} from '@angular/core';
-import {AriaLivePoliteness, LayoutDirection} from '../core';
+import {AriaLivePoliteness, Direction} from '../core';
 
 /**
  * Configuration used when opening a snack-bar.
@@ -12,7 +20,7 @@ export class MdSnackBarConfig {
   announcementMessage?: string = '';
 
   /** The view container to place the overlay for the snack bar into. */
-  viewContainerRef?: ViewContainerRef = null;
+  viewContainerRef?: ViewContainerRef;
 
   /** The length of time in milliseconds to wait before automatically dismissing the snack bar. */
   duration?: number = 0;
@@ -21,5 +29,5 @@ export class MdSnackBarConfig {
   extraClasses?: string[];
 
   /** Text layout direction for the snack bar. */
-  direction?: LayoutDirection = 'ltr';
+  direction?: Direction = 'ltr';
 }

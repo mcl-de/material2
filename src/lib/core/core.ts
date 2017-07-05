@@ -1,22 +1,34 @@
+/**
+ * @license
+ * Copyright Google Inc. All Rights Reserved.
+ *
+ * Use of this source code is governed by an MIT-style license that can be
+ * found in the LICENSE file at https://angular.io/license
+ */
+
 import {NgModule} from '@angular/core';
+import {ObserveContentModule} from '@angular/cdk';
 import {MdLineModule} from './line/line';
-import {RtlModule} from './rtl/dir';
-import {ObserveContentModule} from './observe-content/observe-content';
-import {MdOptionModule} from './option/option';
+import {BidiModule} from './bidi/index';
+import {MdOptionModule} from './option/index';
 import {PortalModule} from './portal/portal-directives';
-import {OverlayModule} from './overlay/overlay-directives';
+import {OverlayModule} from './overlay/index';
 import {A11yModule} from './a11y/index';
 import {MdSelectionModule} from './selection/index';
 import {MdRippleModule} from './ripple/index';
 
+// Re-exports of the CDK to avoid breaking changes.
+export {
+  coerceBooleanProperty,
+  coerceNumberProperty,
+  ObserveContentModule,
+  ObserveContent
+} from '@angular/cdk';
 
 // RTL
-export {Dir, LayoutDirection, RtlModule} from './rtl/dir';
+export {Dir, Direction, Directionality, BidiModule} from './bidi/index';
 
-// Mutation Observer
-export {ObserveContentModule, ObserveContent} from './observe-content/observe-content';
-
-export {MdOptionModule, MdOption, MdOptionSelectionChange} from './option/option';
+export * from './option/index';
 
 // Portals
 export {
@@ -90,23 +102,35 @@ export * from './animation/animation';
 // Selection
 export * from './selection/index';
 
-// Coercion
-export {coerceBooleanProperty} from './coercion/boolean-property';
-export {coerceNumberProperty} from './coercion/number-property';
-
 // Compatibility
 export {CompatibilityModule, NoConflictStyleCompatibilityMode} from './compatibility/compatibility';
 
 // Common material module
-export {MdCommonModule} from './common-behaviors/common-module';
+export {MdCommonModule, MATERIAL_SANITY_CHECKS} from './common-behaviors/common-module';
 
 // Datetime
 export * from './datetime/index';
 
+// Placeholder
+export {
+  FloatPlaceholderType,
+  PlaceholderOptions,
+  MD_PLACEHOLDER_GLOBAL_OPTIONS
+} from './placeholder/placeholder-options';
+
+// Error
+export {
+  ErrorStateMatcher,
+  ErrorOptions,
+  MD_ERROR_GLOBAL_OPTIONS,
+  defaultErrorStateMatcher,
+  showOnDirtyErrorStateMatcher
+} from './error/error-options';
+
 @NgModule({
   imports: [
     MdLineModule,
-    RtlModule,
+    BidiModule,
     MdRippleModule,
     ObserveContentModule,
     PortalModule,
@@ -117,7 +141,7 @@ export * from './datetime/index';
   ],
   exports: [
     MdLineModule,
-    RtlModule,
+    BidiModule,
     MdRippleModule,
     ObserveContentModule,
     PortalModule,

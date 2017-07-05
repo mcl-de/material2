@@ -1,4 +1,13 @@
-import {Directive, ElementRef, Input, AfterViewInit} from '@angular/core';
+/**
+ * @license
+ * Copyright Google Inc. All Rights Reserved.
+ *
+ * Use of this source code is governed by an MIT-style license that can be
+ * found in the LICENSE file at https://angular.io/license
+ */
+
+import {Directive, ElementRef, Input, AfterViewInit, Optional, Self} from '@angular/core';
+import {NgControl} from '@angular/forms';
 
 
 /**
@@ -16,11 +25,13 @@ import {Directive, ElementRef, Input, AfterViewInit} from '@angular/core';
   },
 })
 export class MdTextareaAutosize implements AfterViewInit {
+  /** Keep track of the previous textarea value to avoid resizing when the value hasn't changed. */
+  private _previousValue: string;
+
   private _minRows: number;
   private _maxRows: number;
 
-  /** @deprecated Use mdAutosizeMinRows */
-  @Input()
+  @Input('mdAutosizeMinRows')
   get minRows() { return this._minRows; }
 
   set minRows(value: number) {
@@ -28,29 +39,29 @@ export class MdTextareaAutosize implements AfterViewInit {
     this._setMinHeight();
   }
 
-  /** @deprecated Use mdAutosizeMaxRows */
-  @Input()
+  @Input('mdAutosizeMaxRows')
   get maxRows() { return this._maxRows; }
-
   set maxRows(value: number) {
     this._maxRows = value;
     this._setMaxHeight();
   }
 
-  /** Minimum number of rows for this textarea. */
-  @Input()
-  get mdAutosizeMinRows(): number { return this.minRows; }
-  set mdAutosizeMinRows(value: number) { this.minRows = value; }
+  @Input('matAutosizeMaxRows')
+  get _matAutosizeMinRows() { return this.minRows; }
+  set _matAutosizeMinRows(v) { this.minRows = v; }
 
-  /** Maximum number of rows for this textarea. */
-  @Input()
-  get mdAutosizeMaxRows(): number { return this.maxRows; }
-  set mdAutosizeMaxRows(value: number) { this.maxRows = value; }
+  @Input('matAutosizeMaxRows')
+  get _matAutosizeMaxRows() { return this.maxRows; }
+  set _matAutosizeMaxRows(v) { this.maxRows = v; }
 
   /** Cached height of a textarea with a single row. */
   private _cachedLineHeight: number;
 
-  constructor(private _elementRef: ElementRef) { }
+  constructor(private _elementRef: ElementRef, @Optional() @Self() formControl: NgControl) {
+    if (formControl && formControl.valueChanges) {
+      formControl.valueChanges.subscribe(() => this.resizeToFitContent());
+    }
+  }
 
   /** Sets the minimum height of the textarea as determined by minRows. */
   _setMinHeight(): void {
@@ -108,9 +119,9 @@ export class MdTextareaAutosize implements AfterViewInit {
     textareaClone.style.minHeight = '';
     textareaClone.style.maxHeight = '';
 
-    textarea.parentNode.appendChild(textareaClone);
+    textarea.parentNode!.appendChild(textareaClone);
     this._cachedLineHeight = textareaClone.clientHeight;
-    textarea.parentNode.removeChild(textareaClone);
+    textarea.parentNode!.removeChild(textareaClone);
 
     // Min and max heights have to be re-calculated if the cached line height changes
     this._setMinHeight();
@@ -120,11 +131,16 @@ export class MdTextareaAutosize implements AfterViewInit {
   /** Resize the textarea to fit its content. */
   resizeToFitContent() {
     const textarea = this._elementRef.nativeElement as HTMLTextAreaElement;
+    if (textarea.value === this._previousValue) {
+      return;
+    }
 
     // Reset the textarea height to auto in order to shrink back to its default size.
     textarea.style.height = 'auto';
 
     // Use the scrollHeight to know how large the textarea *would* be if fit its entire value.
     textarea.style.height = `${textarea.scrollHeight}px`;
+
+    this._previousValue = textarea.value;
   }
 }

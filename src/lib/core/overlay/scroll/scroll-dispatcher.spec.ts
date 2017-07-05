@@ -1,8 +1,6 @@
 import {inject, TestBed, async, fakeAsync, ComponentFixture, tick} from '@angular/core/testing';
 import {NgModule, Component, ViewChild, ElementRef} from '@angular/core';
-import {ScrollDispatcher} from './scroll-dispatcher';
-import {OverlayModule} from '../overlay-directives';
-import {Scrollable} from './scrollable';
+import {OverlayModule, Scrollable, ScrollDispatcher} from '../index';
 import {dispatchFakeEvent} from '../../testing/dispatch-events';
 
 describe('Scroll Dispatcher', () => {
@@ -70,7 +68,7 @@ describe('Scroll Dispatcher', () => {
 
     it('should not execute the global events in the Angular zone', () => {
       const spy = jasmine.createSpy('zone unstable callback');
-      const subscription = fixture.ngZone.onUnstable.subscribe(spy);
+      const subscription = fixture.ngZone!.onUnstable.subscribe(spy);
 
       scroll.scrolled(0, () => {});
       dispatchFakeEvent(document, 'scroll');
@@ -82,7 +80,7 @@ describe('Scroll Dispatcher', () => {
 
     it('should not execute the scrollable events in the Angular zone', () => {
       const spy = jasmine.createSpy('zone unstable callback');
-      const subscription = fixture.ngZone.onUnstable.subscribe(spy);
+      const subscription = fixture.ngZone!.onUnstable.subscribe(spy);
 
       dispatchFakeEvent(fixture.componentInstance.scrollingElement.nativeElement, 'scroll');
 

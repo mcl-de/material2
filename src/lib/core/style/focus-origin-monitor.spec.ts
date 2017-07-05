@@ -131,7 +131,7 @@ describe('FocusOriginMonitor', () => {
   }));
 
   it('focusVia keyboard should simulate keyboard focus', async(() => {
-    focusOriginMonitor.focusVia(buttonElement, buttonRenderer, 'keyboard');
+    focusOriginMonitor.focusVia(buttonElement, 'keyboard');
     fixture.detectChanges();
 
     setTimeout(() => {
@@ -148,7 +148,7 @@ describe('FocusOriginMonitor', () => {
   }));
 
   it('focusVia mouse should simulate mouse focus', async(() => {
-    focusOriginMonitor.focusVia(buttonElement, buttonRenderer, 'mouse');
+    focusOriginMonitor.focusVia(buttonElement, 'mouse');
     fixture.detectChanges();
 
     setTimeout(() => {
@@ -165,7 +165,7 @@ describe('FocusOriginMonitor', () => {
   }));
 
   it('focusVia mouse should simulate mouse focus', async(() => {
-    focusOriginMonitor.focusVia(buttonElement, buttonRenderer, 'touch');
+    focusOriginMonitor.focusVia(buttonElement, 'touch');
     fixture.detectChanges();
 
     setTimeout(() => {
@@ -182,7 +182,7 @@ describe('FocusOriginMonitor', () => {
   }));
 
   it('focusVia program should simulate programmatic focus', async(() => {
-    focusOriginMonitor.focusVia(buttonElement, buttonRenderer, 'program');
+    focusOriginMonitor.focusVia(buttonElement, 'program');
     fixture.detectChanges();
 
     setTimeout(() => {
@@ -209,7 +209,9 @@ describe('FocusOriginMonitor', () => {
           .toBe(2, 'button should have exactly 2 focus classes');
       expect(changeHandler).toHaveBeenCalledWith('program');
 
-      buttonElement.blur();
+      // Call `blur` directly because invoking `buttonElement.blur()` does not always trigger the
+      // handler on IE11 on SauceLabs.
+      focusOriginMonitor._onBlur({} as any, buttonElement);
       fixture.detectChanges();
 
       expect(buttonElement.classList.length)
@@ -238,6 +240,7 @@ describe('FocusOriginMonitor', () => {
 
 
 describe('cdkMonitorFocus', () => {
+  let focusOriginMonitor: FocusOriginMonitor;
   beforeEach(async(() => {
     TestBed.configureTestingModule({
       imports: [StyleModule],
@@ -249,6 +252,10 @@ describe('cdkMonitorFocus', () => {
     });
 
     TestBed.compileComponents();
+  }));
+
+  beforeEach(inject([FocusOriginMonitor], (fom: FocusOriginMonitor) => {
+    focusOriginMonitor = fom;
   }));
 
   describe('button with cdkMonitorElementFocus', () => {
@@ -356,7 +363,9 @@ describe('cdkMonitorFocus', () => {
             .toBe(2, 'button should have exactly 2 focus classes');
         expect(fixture.componentInstance.focusChanged).toHaveBeenCalledWith('program');
 
-        buttonElement.blur();
+        // Call `blur` directly because invoking `buttonElement.blur()` does not always trigger the
+        // handler on IE11 on SauceLabs.
+        focusOriginMonitor._onBlur({} as any, buttonElement);
         fixture.detectChanges();
 
         expect(buttonElement.classList.length)
@@ -464,7 +473,7 @@ class PlainButton {
   template: `<button cdkMonitorElementFocus (cdkFocusChange)="focusChanged($event)"></button>`
 })
 class ButtonWithFocusClasses {
-  focusChanged(origin: FocusOrigin) {}
+  focusChanged(_origin: FocusOrigin) {}
 }
 
 

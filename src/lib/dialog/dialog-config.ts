@@ -1,4 +1,13 @@
+/**
+ * @license
+ * Copyright Google Inc. All Rights Reserved.
+ *
+ * Use of this source code is governed by an MIT-style license that can be
+ * found in the LICENSE file at https://angular.io/license
+ */
+
 import {ViewContainerRef} from '@angular/core';
+import {Direction} from '../core';
 
 /** Valid ARIA roles for a dialog element. */
 export type DialogRole = 'dialog' | 'alertdialog';
@@ -50,6 +59,9 @@ export class MdDialogConfig {
 
   /** Data being injected into the child component. */
   data?: any = null;
+
+  /** Layout direction for the dialog's content. */
+  direction?: Direction = 'ltr';
 
   // TODO(jelbourn): add configuration for lifecycle hooks, ARIA labelling.
 }

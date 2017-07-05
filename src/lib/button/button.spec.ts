@@ -38,6 +38,12 @@ describe('MdButton', () => {
     fixture.detectChanges();
     expect(buttonDebugElement.nativeElement.classList.contains('mat-accent')).toBe(true);
     expect(aDebugElement.nativeElement.classList.contains('mat-accent')).toBe(true);
+
+    testComponent.buttonColor = null;
+    fixture.detectChanges();
+
+    expect(buttonDebugElement.nativeElement.classList).not.toContain('mat-accent');
+    expect(aDebugElement.nativeElement.classList).not.toContain('mat-accent');
   });
 
   it('should should not clear previous defined classes', () => {
@@ -59,7 +65,30 @@ describe('MdButton', () => {
     expect(buttonDebugElement.nativeElement.classList.contains('mat-primary')).toBe(false);
     expect(buttonDebugElement.nativeElement.classList.contains('mat-accent')).toBe(true);
     expect(buttonDebugElement.nativeElement.classList.contains('custom-class')).toBe(true);
+  });
 
+  describe('button[md-fab]', () => {
+    it('should have accent palette by default', () => {
+      const fixture = TestBed.createComponent(TestApp);
+      const fabButtonDebugEl = fixture.debugElement.query(By.css('button[md-fab]'));
+
+      fixture.detectChanges();
+
+      expect(fabButtonDebugEl.nativeElement.classList)
+        .toContain('mat-accent', 'Expected fab buttons to use accent palette by default');
+    });
+  });
+
+  describe('button[md-mini-fab]', () => {
+    it('should have accent palette by default', () => {
+      const fixture = TestBed.createComponent(TestApp);
+      const miniFabButtonDebugEl = fixture.debugElement.query(By.css('button[md-mini-fab]'));
+
+      fixture.detectChanges();
+
+      expect(miniFabButtonDebugEl.nativeElement.classList)
+        .toContain('mat-accent', 'Expected mini-fab buttons to use accent palette by default');
+    });
   });
 
   // Regular button tests
@@ -218,6 +247,8 @@ describe('MdButton', () => {
       Go
     </button>
     <a href="http://www.google.com" md-button [disabled]="isDisabled" [color]="buttonColor">Link</a>
+    <button md-fab>Fab Button</button>
+    <button md-mini-fab>Mini Fab Button</button>
   `
 })
 class TestApp {

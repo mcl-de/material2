@@ -16,11 +16,9 @@ import {AnimationEvent} from '@angular/animations';
 import {By} from '@angular/platform-browser';
 import {NoopAnimationsModule} from '@angular/platform-browser/animations';
 import {TooltipPosition, MdTooltip, MdTooltipModule, SCROLL_THROTTLE_MS} from './index';
-import {OverlayContainer} from '../core';
-import {Dir, LayoutDirection} from '../core/rtl/dir';
-import {OverlayModule} from '../core/overlay/overlay-directives';
+import {Directionality, Direction} from '../core/bidi/index';
+import {OverlayModule, Scrollable, OverlayContainer} from '../core/overlay/index';
 import {Platform} from '../core/platform/platform';
-import {Scrollable} from '../core/overlay/scroll/scrollable';
 import {dispatchFakeEvent} from '../core/testing/dispatch-events';
 
 
@@ -28,7 +26,7 @@ const initialTooltipMessage = 'initial tooltip message';
 
 describe('MdTooltip', () => {
   let overlayContainerElement: HTMLElement;
-  let dir: {value: LayoutDirection};
+  let dir: {value: Direction};
 
   beforeEach(async(() => {
     TestBed.configureTestingModule({
@@ -41,7 +39,7 @@ describe('MdTooltip', () => {
           document.body.appendChild(overlayContainerElement);
           return {getContainerElement: () => overlayContainerElement};
         }},
-        {provide: Dir, useFactory: () => {
+        {provide: Directionality, useFactory: () => {
           return dir = { value: 'ltr' };
         }}
       ]
@@ -166,12 +164,12 @@ describe('MdTooltip', () => {
     it('should not show tooltip if message is not present or empty', () => {
       expect(tooltipDirective._tooltipInstance).toBeUndefined();
 
-      tooltipDirective.message = undefined;
+      tooltipDirective.message = undefined!;
       fixture.detectChanges();
       tooltipDirective.show();
       expect(tooltipDirective._tooltipInstance).toBeUndefined();
 
-      tooltipDirective.message = null;
+      tooltipDirective.message = null!;
       fixture.detectChanges();
       tooltipDirective.show();
       expect(tooltipDirective._tooltipInstance).toBeUndefined();
@@ -228,7 +226,7 @@ describe('MdTooltip', () => {
 
       tooltipDirective.show();
       tick(0); // Tick for the show delay (default is 0)
-      expect(tooltipDirective._tooltipInstance._visibility).toBe('visible');
+      expect(tooltipDirective._tooltipInstance!._visibility).toBe('visible');
 
       fixture.detectChanges();
       expect(overlayContainerElement.textContent).toContain(initialTooltipMessage);
@@ -238,6 +236,32 @@ describe('MdTooltip', () => {
 
       fixture.detectChanges();
       expect(overlayContainerElement.textContent).toContain(newMessage);
+    }));
+
+    it('should allow extra classes to be set on the tooltip', fakeAsync(() => {
+      expect(tooltipDirective._tooltipInstance).toBeUndefined();
+
+      tooltipDirective.show();
+      tick(0); // Tick for the show delay (default is 0)
+      fixture.detectChanges();
+
+      // Make sure classes aren't prematurely added
+      let tooltipElement = overlayContainerElement.querySelector('.mat-tooltip') as HTMLElement;
+      expect(tooltipElement.classList).not.toContain('custom-one',
+        'Expected to not have the class before enabling mdTooltipClass');
+      expect(tooltipElement.classList).not.toContain('custom-two',
+        'Expected to not have the class before enabling mdTooltipClass');
+
+      // Enable the classes via ngClass syntax
+      fixture.componentInstance.showTooltipClass = true;
+      fixture.detectChanges();
+
+      // Make sure classes are correctly added
+      tooltipElement = overlayContainerElement.querySelector('.mat-tooltip') as HTMLElement;
+      expect(tooltipElement.classList).toContain('custom-one',
+        'Expected to have the class after enabling mdTooltipClass');
+      expect(tooltipElement.classList).toContain('custom-two',
+        'Expected to have the class after enabling mdTooltipClass');
     }));
 
     it('should be removed after parent destroyed', fakeAsync(() => {
@@ -260,7 +284,7 @@ describe('MdTooltip', () => {
       tick(tooltipDelay); // Change the tooltip state to hidden and trigger animation start
 
       // Store the tooltip instance, which will be set to null after the button is hidden.
-      const tooltipInstance = tooltipDirective._tooltipInstance;
+      const tooltipInstance = tooltipDirective._tooltipInstance!;
       fixture.componentInstance.showButton = false;
       fixture.detectChanges();
 
@@ -319,31 +343,31 @@ describe('MdTooltip', () => {
     it('should have consistent left transform origin in any dir', () => {
       tooltipDirective.position = 'right';
       tooltipDirective.show();
-      expect(tooltipDirective._tooltipInstance._transformOrigin).toBe('left');
+      expect(tooltipDirective._tooltipInstance!._transformOrigin).toBe('left');
 
       tooltipDirective.position = 'after';
       tooltipDirective.show();
-      expect(tooltipDirective._tooltipInstance._transformOrigin).toBe('left');
+      expect(tooltipDirective._tooltipInstance!._transformOrigin).toBe('left');
 
       dir.value = 'rtl';
       tooltipDirective.position = 'before';
       tooltipDirective.show();
-      expect(tooltipDirective._tooltipInstance._transformOrigin).toBe('left');
+      expect(tooltipDirective._tooltipInstance!._transformOrigin).toBe('left');
     });
 
     it('should have consistent right transform origin in any dir', () => {
       tooltipDirective.position = 'left';
       tooltipDirective.show();
-      expect(tooltipDirective._tooltipInstance._transformOrigin).toBe('right');
+      expect(tooltipDirective._tooltipInstance!._transformOrigin).toBe('right');
 
       tooltipDirective.position = 'before';
       tooltipDirective.show();
-      expect(tooltipDirective._tooltipInstance._transformOrigin).toBe('right');
+      expect(tooltipDirective._tooltipInstance!._transformOrigin).toBe('right');
 
       dir.value = 'rtl';
       tooltipDirective.position = 'after';
       tooltipDirective.show();
-      expect(tooltipDirective._tooltipInstance._transformOrigin).toBe('right');
+      expect(tooltipDirective._tooltipInstance!._transformOrigin).toBe('right');
     });
 
     it('should throw when trying to assign an invalid position', () => {
@@ -361,7 +385,7 @@ describe('MdTooltip', () => {
       tick(0);
       fixture.detectChanges();
 
-      const tooltipWrapper = overlayContainerElement.querySelector('.cdk-overlay-pane');
+      const tooltipWrapper = overlayContainerElement.querySelector('.cdk-overlay-pane')!;
 
       expect(tooltipWrapper).toBeTruthy('Expected tooltip to be shown.');
       expect(tooltipWrapper.getAttribute('dir')).toBe('rtl', 'Expected tooltip to be in RTL mode.');
@@ -468,7 +492,8 @@ describe('MdTooltip', () => {
   template: `
     <button *ngIf="showButton"
             [mdTooltip]="message"
-            [mdTooltipPosition]="position">
+            [mdTooltipPosition]="position"
+            [mdTooltipClass]="{'custom-one': showTooltipClass, 'custom-two': showTooltipClass }">
       Button
     </button>`
 })
@@ -476,6 +501,7 @@ class BasicTooltipDemo {
   position: string = 'below';
   message: string = initialTooltipMessage;
   showButton: boolean = true;
+  showTooltipClass = false;
   @ViewChild(MdTooltip) tooltip: MdTooltip;
 }
 

@@ -1,17 +1,23 @@
+/**
+ * @license
+ * Copyright Google Inc. All Rights Reserved.
+ *
+ * Use of this source code is governed by an MIT-style license that can be
+ * found in the LICENSE file at https://angular.io/license
+ */
+
 import {
   ComponentFactoryResolver,
   Injectable,
   ApplicationRef,
   Injector,
   NgZone,
-  Provider,
 } from '@angular/core';
 import {OverlayState} from './overlay-state';
 import {DomPortalHost} from '../portal/dom-portal-host';
 import {OverlayRef} from './overlay-ref';
 import {OverlayPositionBuilder} from './position/overlay-position-builder';
-import {VIEWPORT_RULER_PROVIDER} from './position/viewport-ruler';
-import {OverlayContainer, OVERLAY_CONTAINER_PROVIDER} from './overlay-container';
+import {OverlayContainer} from './overlay-container';
 import {ScrollStrategy, ScrollStrategyOptions} from './scroll/index';
 
 
@@ -91,11 +97,3 @@ export class Overlay {
     return new OverlayRef(portalHost, pane, state, scrollStrategy, this._ngZone);
   }
 }
-
-/** Providers for Overlay and its related injectables. */
-export const OVERLAY_PROVIDERS: Provider[] = [
-  Overlay,
-  OverlayPositionBuilder,
-  VIEWPORT_RULER_PROVIDER,
-  OVERLAY_CONTAINER_PROVIDER,
-];
