@@ -1,5 +1,12 @@
+/**
+ * @license
+ * Copyright Google Inc. All Rights Reserved.
+ *
+ * Use of this source code is governed by an MIT-style license that can be
+ * found in the LICENSE file at https://angular.io/license
+ */
+
 import {
-    NgModule,
     Directive,
     EventEmitter,
     TemplateRef,
@@ -13,7 +20,7 @@ import {
     OnChanges,
     SimpleChanges,
 } from '@angular/core';
-import {Overlay, OVERLAY_PROVIDERS} from './overlay';
+import {Overlay} from './overlay';
 import {OverlayRef} from './overlay-ref';
 import {TemplatePortal} from '../portal/portal';
 import {OverlayState} from './overlay-state';
@@ -21,15 +28,13 @@ import {
     ConnectionPositionPair,
     ConnectedOverlayPositionChange
 } from './position/connected-position';
-import {PortalModule} from '../portal/portal-directives';
 import {ConnectedPositionStrategy} from './position/connected-position-strategy';
-import {Dir, LayoutDirection} from '../rtl/dir';
+import {Directionality, Direction} from '../bidi/index';
 import {Scrollable} from './scroll/scrollable';
 import {ScrollStrategy} from './scroll/scroll-strategy';
-import {coerceBooleanProperty} from '../coercion/boolean-property';
+import {coerceBooleanProperty} from '@angular/cdk';
 import {ESCAPE} from '../keyboard/keycodes';
 import {Subscription} from 'rxjs/Subscription';
-import {ScrollDispatchModule} from './scroll/index';
 
 
 /** Default set of positions for the overlay. Follows the behavior of a dropdown. */
@@ -68,7 +73,7 @@ export class ConnectedOverlayDirective implements OnDestroy, OnChanges {
   private _overlayRef: OverlayRef;
   private _templatePortal: TemplatePortal;
   private _hasBackdrop = false;
-  private _backdropSubscription: Subscription;
+  private _backdropSubscription: Subscription | null;
   private _positionSubscription: Subscription;
   private _offsetX: number = 0;
   private _offsetY: number = 0;
@@ -157,7 +162,7 @@ export class ConnectedOverlayDirective implements OnDestroy, OnChanges {
       private _renderer: Renderer2,
       templateRef: TemplateRef<any>,
       viewContainerRef: ViewContainerRef,
-      @Optional() private _dir: Dir) {
+      @Optional() private _dir: Directionality) {
     this._templatePortal = new TemplatePortal(templateRef, viewContainerRef);
   }
 
@@ -167,7 +172,7 @@ export class ConnectedOverlayDirective implements OnDestroy, OnChanges {
   }
 
   /** The element's layout direction. */
-  get dir(): LayoutDirection {
+  get dir(): Direction {
     return this._dir ? this._dir.value : 'ltr';
   }
 
@@ -318,12 +323,3 @@ export class ConnectedOverlayDirective implements OnDestroy, OnChanges {
     });
   }
 }
-
-
-@NgModule({
-  imports: [PortalModule, ScrollDispatchModule],
-  exports: [ConnectedOverlayDirective, OverlayOrigin, ScrollDispatchModule],
-  declarations: [ConnectedOverlayDirective, OverlayOrigin],
-  providers: [OVERLAY_PROVIDERS],
-})
-export class OverlayModule {}

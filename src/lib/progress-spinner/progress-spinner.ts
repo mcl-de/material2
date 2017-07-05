@@ -1,3 +1,11 @@
+/**
+ * @license
+ * Copyright Google Inc. All Rights Reserved.
+ *
+ * Use of this source code is governed by an MIT-style license that can be
+ * found in the LICENSE file at https://angular.io/license
+ */
+
 import {
   Component,
   HostBinding,
@@ -10,6 +18,7 @@ import {
   Directive,
   ViewChild,
 } from '@angular/core';
+import {CanColor, mixinColor} from '../core/common-behaviors/color';
 
 
 // TODO(josephperrott): Benchpress tests.
@@ -43,12 +52,16 @@ type EasingFn = (currentTime: number, startValue: number,
  */
 @Directive({
   selector: 'md-progress-spinner, mat-progress-spinner',
-  host: {
-    '[class.mat-progress-spinner]': 'true'
-  }
+  host: {'class': 'mat-progress-spinner'}
 })
 export class MdProgressSpinnerCssMatStyler {}
 
+// Boilerplate for applying mixins to MdProgressSpinner.
+/** @docs-private */
+export class MdProgressSpinnerBase {
+  constructor(public _renderer: Renderer2, public _elementRef: ElementRef) {}
+}
+export const _MdProgressSpinnerMixinBase = mixinColor(MdProgressSpinnerBase, 'primary');
 
 /**
  * <md-progress-spinner> component.
@@ -61,23 +74,25 @@ export class MdProgressSpinnerCssMatStyler {}
     '[attr.aria-valuemin]': '_ariaValueMin',
     '[attr.aria-valuemax]': '_ariaValueMax'
   },
+  inputs: ['color'],
   templateUrl: 'progress-spinner.html',
   styleUrls: ['progress-spinner.css'],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class MdProgressSpinner implements OnDestroy {
+export class MdProgressSpinner extends _MdProgressSpinnerMixinBase
+    implements OnDestroy, CanColor {
+
   /** The id of the last requested animation. */
   private _lastAnimationId: number = 0;
 
   /** The id of the indeterminate interval. */
-  private _interdeterminateInterval: number;
+  private _interdeterminateInterval: number | null;
 
   /** The SVG <path> node that is used to draw the circle. */
   @ViewChild('path') private _path: ElementRef;
 
   private _mode: ProgressSpinnerMode = 'determinate';
   private _value: number;
-  private _color: string = 'primary';
 
   /** Stroke width of the progress spinner. By default uses 10px as stroke width. */
   @Input() strokeWidth: number = PROGRESS_SPINNER_STROKE_WIDTH;
@@ -100,8 +115,11 @@ export class MdProgressSpinner implements OnDestroy {
     return this._interdeterminateInterval;
   }
   /** @docs-private */
-  set interdeterminateInterval(interval: number) {
-    clearInterval(this._interdeterminateInterval);
+  set interdeterminateInterval(interval: number | null) {
+    if (this._interdeterminateInterval) {
+      clearInterval(this._interdeterminateInterval);
+    }
+
     this._interdeterminateInterval = interval;
   }
 
@@ -112,17 +130,6 @@ export class MdProgressSpinner implements OnDestroy {
     this._cleanupIndeterminateAnimation();
   }
 
-  /** The color of the progress-spinner. Can be primary, accent, or warn. */
-  @Input()
-  get color(): string { return this._color; }
-  set color(value: string) {
-    if (value) {
-      this._renderer.removeClass(this._elementRef.nativeElement, `mat-${this._color}`);
-      this._renderer.addClass(this._elementRef.nativeElement, `mat-${value}`);
-      this._color = value;
-    }
-  }
-
   /** Value of the progress circle. It is bound to the host as the attribute aria-valuenow. */
   @Input()
   @HostBinding('attr.aria-valuenow')
@@ -130,6 +137,8 @@ export class MdProgressSpinner implements OnDestroy {
     if (this.mode == 'determinate') {
       return this._value;
     }
+
+    return 0;
   }
   set value(v: number) {
     if (v != null && this.mode == 'determinate') {
@@ -162,10 +171,11 @@ export class MdProgressSpinner implements OnDestroy {
     }
   }
 
-  constructor(
-    private _ngZone: NgZone,
-    private _elementRef: ElementRef,
-    private _renderer: Renderer2) { }
+  constructor(renderer: Renderer2,
+              elementRef: ElementRef,
+              private _ngZone: NgZone) {
+    super(renderer, elementRef);
+  }
 
 
   /**
@@ -272,15 +282,16 @@ export class MdProgressSpinner implements OnDestroy {
   host: {
     'role': 'progressbar',
     'mode': 'indeterminate',
-    '[class.mat-spinner]': 'true',
+    'class': 'mat-spinner',
   },
+  inputs: ['color'],
   templateUrl: 'progress-spinner.html',
   styleUrls: ['progress-spinner.css'],
 })
 export class MdSpinner extends MdProgressSpinner implements OnDestroy {
 
   constructor(elementRef: ElementRef, ngZone: NgZone, renderer: Renderer2) {
-    super(ngZone, elementRef, renderer);
+    super(renderer, elementRef, ngZone);
     this.mode = 'indeterminate';
   }
 
@@ -346,7 +357,7 @@ function materialEase(currentTime: number, startValue: number,
  * @return A string for an SVG path representing a circle filled from the starting point to the
  *    percentage value provided.
  */
-function getSvgArc(currentValue: number, rotation: number, strokeWidth: number) {
+function getSvgArc(currentValue: number, rotation: number, strokeWidth: number): string {
   let startPoint = rotation || 0;
   let radius = 50;
   let pathRadius = radius - strokeWidth;

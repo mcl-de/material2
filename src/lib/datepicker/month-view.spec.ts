@@ -3,7 +3,7 @@ import {Component} from '@angular/core';
 import {By} from '@angular/platform-browser';
 import {MdMonthView} from './month-view';
 import {MdCalendarBody} from './calendar-body';
-import {MdNativeDateModule} from '../core/datetime/index';
+import {MdNativeDateModule, DateAdapter, NativeDateAdapter} from '../core/datetime/index';
 
 
 // When constructing a Date, the month is zero-based. This can be confusing, since people are
@@ -17,6 +17,13 @@ describe('MdMonthView', () => {
     TestBed.configureTestingModule({
       imports: [
         MdNativeDateModule,
+      ],
+      providers: [
+        {provide: DateAdapter, useFactory: () => {
+          let adapter = new NativeDateAdapter();
+          adapter.setLocale('en-US');
+          return adapter;
+        }}
       ],
       declarations: [
         MdCalendarBody,
@@ -46,17 +53,17 @@ describe('MdMonthView', () => {
     });
 
     it('has correct month label', () => {
-      let labelEl = monthViewNativeElement.querySelector('.mat-calendar-body-label');
+      let labelEl = monthViewNativeElement.querySelector('.mat-calendar-body-label')!;
       expect(labelEl.innerHTML.trim()).toBe('JAN');
     });
 
     it('has 31 days', () => {
-      let cellEls = monthViewNativeElement.querySelectorAll('.mat-calendar-body-cell');
+      let cellEls = monthViewNativeElement.querySelectorAll('.mat-calendar-body-cell')!;
       expect(cellEls.length).toBe(31);
     });
 
     it('shows selected date if in same month', () => {
-      let selectedEl = monthViewNativeElement.querySelector('.mat-calendar-body-selected');
+      let selectedEl = monthViewNativeElement.querySelector('.mat-calendar-body-selected')!;
       expect(selectedEl.innerHTML.trim()).toBe('10');
     });
 
@@ -73,7 +80,7 @@ describe('MdMonthView', () => {
       (cellEls[cellEls.length - 1] as HTMLElement).click();
       fixture.detectChanges();
 
-      let selectedEl = monthViewNativeElement.querySelector('.mat-calendar-body-selected');
+      let selectedEl = monthViewNativeElement.querySelector('.mat-calendar-body-selected')!;
       expect(selectedEl.innerHTML.trim()).toBe('31');
     });
 

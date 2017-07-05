@@ -7,6 +7,7 @@ $mat-button-toggle-padding: 0 16px !default;
 $mat-button-toggle-height: 36px !default;
 $mat-button-toggle-border-radius: 2px !default;
 
+.mat-button-toggle-standalone,
 .mat-button-toggle-group {
   @include mat-elevation(2);
   position: relative;
@@ -55,11 +56,11 @@ $mat-button-toggle-border-radius: 2px !default;
   vertical-align: middle;
 }
 
-// Overlay to be used as a tint. Note that the same effect can be achieved by using a pseudo
-// element, however we use a proper DOM element in order to be able to disable the default
-// touch action. This makes the buttons more responsive on touch devices.
+// Overlay to be used as a tint.
 .mat-button-toggle-focus-overlay {
   border-radius: inherit;
+
+  // Disable pointer events to prevent it from hijacking user events.
   pointer-events: none;
   opacity: 0;
   @include mat-fill;

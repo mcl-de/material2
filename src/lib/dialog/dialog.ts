@@ -1,4 +1,20 @@
-import {Injector, ComponentRef, Injectable, Optional, SkipSelf, TemplateRef} from '@angular/core';
+/**
+ * @license
+ * Copyright Google Inc. All Rights Reserved.
+ *
+ * Use of this source code is governed by an MIT-style license that can be
+ * found in the LICENSE file at https://angular.io/license
+ */
+
+import {
+  Injector,
+  InjectionToken,
+  ComponentRef,
+  Injectable,
+  Optional,
+  SkipSelf,
+  TemplateRef,
+} from '@angular/core';
 import {Location} from '@angular/common';
 import {Observable} from 'rxjs/Observable';
 import {Subject} from 'rxjs/Subject';
@@ -16,7 +32,8 @@ import {MdDialogConfig} from './dialog-config';
 import {MdDialogRef} from './dialog-ref';
 import {MdDialogContainer} from './dialog-container';
 import {TemplatePortal} from '../core/portal/portal';
-import 'rxjs/add/operator/first';
+
+export const MD_DIALOG_DATA = new InjectionToken<any>('MdDialogData');
 
 
 /**
@@ -127,6 +144,7 @@ export class MdDialog {
     overlayState.panelClass = dialogConfig.panelClass;
     overlayState.hasBackdrop = dialogConfig.hasBackdrop;
     overlayState.scrollStrategy = this._overlay.scrollStrategies.block();
+    overlayState.direction = dialogConfig.direction;
     if (dialogConfig.backdropClass) {
       overlayState.backdropClass = dialogConfig.backdropClass;
     }
@@ -142,11 +160,9 @@ export class MdDialog {
    * @returns A promise resolving to a ComponentRef for the attached container.
    */
   private _attachDialogContainer(overlay: OverlayRef, config: MdDialogConfig): MdDialogContainer {
-    let viewContainer = config ? config.viewContainerRef : null;
-    let containerPortal = new ComponentPortal(MdDialogContainer, viewContainer);
-
+    let containerPortal = new ComponentPortal(MdDialogContainer, config.viewContainerRef);
     let containerRef: ComponentRef<MdDialogContainer> = overlay.attach(containerPortal);
-    containerRef.instance.dialogConfig = config;
+    containerRef.instance._config = config;
 
     return containerRef.instance;
   }
@@ -165,27 +181,26 @@ export class MdDialog {
       dialogContainer: MdDialogContainer,
       overlayRef: OverlayRef,
       config: MdDialogConfig): MdDialogRef<T> {
+
     // Create a reference to the dialog we're creating in order to give the user a handle
     // to modify and close it.
-
     let dialogRef = new MdDialogRef<T>(overlayRef, dialogContainer);
 
-    if (!config.disableClose) {
-      // When the dialog backdrop is clicked, we want to close it.
-      overlayRef.backdropClick().first().subscribe(() => dialogRef.close());
+    // When the dialog backdrop is clicked, we want to close it.
+    if (config.hasBackdrop) {
+      overlayRef.backdropClick().subscribe(() => {
+        if (!dialogRef.disableClose) {
+          dialogRef.close();
+        }
+      });
     }
 
-    // We create an injector specifically for the component we're instantiating so that it can
-    // inject the MdDialogRef. This allows a component loaded inside of a dialog to close itself
-    // and, optionally, to return a value.
-    let userInjector = config && config.viewContainerRef && config.viewContainerRef.injector;
-    let dialogInjector = new DialogInjector(userInjector || this._injector, dialogRef, config.data);
-
     if (componentOrTemplateRef instanceof TemplateRef) {
-      dialogContainer.attachTemplatePortal(new TemplatePortal(componentOrTemplateRef, null));
+      dialogContainer.attachTemplatePortal(new TemplatePortal(componentOrTemplateRef, null!));
     } else {
+      let injector = this._createInjector<T>(config, dialogRef, dialogContainer);
       let contentRef = dialogContainer.attachComponentPortal(
-          new ComponentPortal(componentOrTemplateRef, null, dialogInjector));
+          new ComponentPortal(componentOrTemplateRef, undefined, injector));
       dialogRef.componentInstance = contentRef.instance;
     }
 
@@ -194,6 +209,29 @@ export class MdDialog {
       .updatePosition(config.position);
 
     return dialogRef;
+  }
+
+  /**
+   * Creates a custom injector to be used inside the dialog. This allows a component loaded inside
+   * of a dialog to close itself and, optionally, to return a value.
+   * @param config Config object that is used to construct the dialog.
+   * @param dialogRef Reference to the dialog.
+   * @param container Dialog container element that wraps all of the contents.
+   * @returns The custom injector that can be used inside the dialog.
+   */
+  private _createInjector<T>(
+      config: MdDialogConfig,
+      dialogRef: MdDialogRef<T>,
+      dialogContainer: MdDialogContainer): DialogInjector {
+
+    let userInjector = config && config.viewContainerRef && config.viewContainerRef.injector;
+    let injectionTokens = new WeakMap();
+
+    injectionTokens.set(MdDialogRef, dialogRef);
+    injectionTokens.set(MdDialogContainer, dialogContainer);
+    injectionTokens.set(MD_DIALOG_DATA, config.data);
+
+    return new DialogInjector(userInjector || this._injector, injectionTokens);
   }
 
   /**
@@ -220,7 +258,7 @@ export class MdDialog {
    */
   private _handleKeydown(event: KeyboardEvent): void {
     let topDialog = this._openDialogs[this._openDialogs.length - 1];
-    let canClose = topDialog ? !topDialog._containerInstance.dialogConfig.disableClose : false;
+    let canClose = topDialog ? !topDialog.disableClose : false;
 
     if (event.keyCode === ESCAPE && canClose) {
       topDialog.close();
@@ -233,6 +271,6 @@ export class MdDialog {
  * @param config Config to be modified.
  * @returns The new configuration object.
  */
-function _applyConfigDefaults(config: MdDialogConfig): MdDialogConfig {
+function _applyConfigDefaults(config?: MdDialogConfig): MdDialogConfig {
   return extendObject(new MdDialogConfig(), config);
 }

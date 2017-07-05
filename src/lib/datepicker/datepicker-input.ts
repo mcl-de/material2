@@ -1,3 +1,11 @@
+/**
+ * @license
+ * Copyright Google Inc. All Rights Reserved.
+ *
+ * Use of this source code is governed by an MIT-style license that can be
+ * found in the LICENSE file at https://angular.io/license
+ */
+
 import {
   AfterContentInit,
   Directive,
@@ -84,11 +92,11 @@ export class MdDatepickerInput<D> implements AfterContentInit, ControlValueAcces
 
   /** The value of the input. */
   @Input()
-  get value(): D {
+  get value(): D | null {
     return this._dateAdapter.parse(this._elementRef.nativeElement.value,
         this._dateFormats.parse.dateInput);
   }
-  set value(value: D) {
+  set value(value: D | null) {
     let date = this._dateAdapter.parse(value, this._dateFormats.parse.dateInput);
     let oldDate = this.value;
     this._renderer.setProperty(this._elementRef.nativeElement, 'value',
@@ -117,11 +125,11 @@ export class MdDatepickerInput<D> implements AfterContentInit, ControlValueAcces
   private _max: D;
 
   /** Emits when the value changes (either due to user input or programmatic change). */
-  _valueChange = new EventEmitter<D>();
+  _valueChange = new EventEmitter<D|null>();
 
   _onTouched = () => {};
 
-  private _cvaOnChange = (value: any) => {};
+  private _cvaOnChange: (value: any) => void = () => {};
 
   private _validatorOnChange = () => {};
 
@@ -148,7 +156,7 @@ export class MdDatepickerInput<D> implements AfterContentInit, ControlValueAcces
   }
 
   /** The combined form control validator for this input. */
-  private _validator: ValidatorFn =
+  private _validator: ValidatorFn | null =
       Validators.compose([this._minValidator, this._maxValidator, this._filterValidator]);
 
   constructor(

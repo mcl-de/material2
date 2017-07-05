@@ -1,3 +1,11 @@
+/**
+ * @license
+ * Copyright Google Inc. All Rights Reserved.
+ *
+ * Use of this source code is governed by an MIT-style license that can be
+ * found in the LICENSE file at https://angular.io/license
+ */
+
 import {
   AfterContentInit,
   ChangeDetectionStrategy,
@@ -27,6 +35,7 @@ import {MdDatepickerIntl} from './datepicker-intl';
 import {createMissingDateImplError} from './datepicker-errors';
 import {MD_DATE_FORMATS, MdDateFormats} from '../core/datetime/date-formats';
 import {MATERIAL_COMPATIBILITY_MODE} from '../core';
+import {first} from '../core/rxjs/index';
 
 
 /**
@@ -39,7 +48,7 @@ import {MATERIAL_COMPATIBILITY_MODE} from '../core';
   templateUrl: 'calendar.html',
   styleUrls: ['calendar.css'],
   host: {
-    '[class.mat-calendar]': 'true',
+    'class': 'mat-calendar',
   },
   encapsulation: ViewEncapsulation.None,
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -188,9 +197,8 @@ export class MdCalendar<D> implements AfterContentInit {
 
   /** Focuses the active cell after the microtask queue is empty. */
   _focusActiveCell() {
-    this._ngZone.runOutsideAngular(() => this._ngZone.onStable.first().subscribe(() => {
-      let activeEl = this._elementRef.nativeElement.querySelector('.mat-calendar-body-active');
-      activeEl.focus();
+    this._ngZone.runOutsideAngular(() => first.call(this._ngZone.onStable).subscribe(() => {
+      this._elementRef.nativeElement.querySelector('.mat-calendar-body-active').focus();
     }));
   }
 

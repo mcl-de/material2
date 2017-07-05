@@ -29,6 +29,11 @@
     "no-var-keyword": true,
     "no-exposed-todo": true,
     "no-debugger": true,
+    "no-rxjs-patch-imports": [
+      true,
+      "src/lib",
+      "src/cdk"
+    ],
     "one-line": [
       true,
       "check-catch",
@@ -65,13 +70,15 @@
       "check-decl",
       "check-operator",
       "check-separator",
-      "check-type"
+      "check-type",
+      "check-preblock"
     ],
     // Bans jasmine helper functions that will prevent the CI from properly running tests.
     "ban": [true, ["fit"], ["fdescribe"], ["xit"], ["xdescribe"]],
     // Disallows importing the whole RxJS library. Submodules can be still imported.
     "import-blacklist": [true, "rxjs"],
     // Avoids inconsistent linebreak styles in source files. Forces developers to use LF linebreaks.
-    "linebreak-style": [true, "LF"]
+    "linebreak-style": [true, "LF"],
+    "require-license-banner": true
   }
 }

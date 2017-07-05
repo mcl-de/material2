@@ -1,3 +1,11 @@
+/**
+ * @license
+ * Copyright Google Inc. All Rights Reserved.
+ *
+ * Use of this source code is governed by an MIT-style license that can be
+ * found in the LICENSE file at https://angular.io/license
+ */
+
 import {ScrollStrategy} from './scroll-strategy';
 import {ViewportRuler} from '../position/viewport-ruler';
 
@@ -5,7 +13,7 @@ import {ViewportRuler} from '../position/viewport-ruler';
  * Strategy that will prevent the user from scrolling while the overlay is visible.
  */
 export class BlockScrollStrategy implements ScrollStrategy {
-  private _previousHTMLStyles = { top: null, left: null };
+  private _previousHTMLStyles = { top: '', left: '' };
   private _previousScrollPosition: { top: number, left: number };
   private _isEnabled = false;
 
@@ -20,8 +28,8 @@ export class BlockScrollStrategy implements ScrollStrategy {
       this._previousScrollPosition = this._viewportRuler.getViewportScrollPosition();
 
       // Cache the previous inline styles in case the user had set them.
-      this._previousHTMLStyles.left = root.style.left;
-      this._previousHTMLStyles.top = root.style.top;
+      this._previousHTMLStyles.left = root.style.left || '';
+      this._previousHTMLStyles.top = root.style.top || '';
 
       // Note: we're using the `html` node, instead of the `body`, because the `body` may
       // have the user agent margin, whereas the `html` is guaranteed not to have one.

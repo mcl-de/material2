@@ -1,3 +1,11 @@
+/**
+ * @license
+ * Copyright Google Inc. All Rights Reserved.
+ *
+ * Use of this source code is governed by an MIT-style license that can be
+ * found in the LICENSE file at https://angular.io/license
+ */
+
 import {Injectable} from '@angular/core';
 import {GestureConfig, HammerManager} from '../core';
 
@@ -18,9 +26,10 @@ export class TestGestureConfig extends GestureConfig {
    */
   buildHammer(element: HTMLElement) {
     let mc = super.buildHammer(element) as HammerManager;
+    let instance = this.hammerInstances.get(element);
 
-    if (this.hammerInstances.get(element)) {
-      this.hammerInstances.get(element).push(mc);
+    if (instance) {
+      instance.push(mc);
     } else {
       this.hammerInstances.set(element, [mc]);
     }
@@ -34,6 +43,9 @@ export class TestGestureConfig extends GestureConfig {
    */
   emitEventForElement(eventType: string, element: HTMLElement, eventData = {}) {
     let instances = this.hammerInstances.get(element);
-    instances.forEach(instance => instance.emit(eventType, eventData));
+
+    if (instances) {
+      instances.forEach(instance => instance.emit(eventType, eventData));
+    }
   }
 }

@@ -18,7 +18,7 @@ import {
   MenuPositionY
 } from './index';
 import {OverlayContainer} from '../core/overlay/overlay-container';
-import {Dir, LayoutDirection} from '../core/rtl/dir';
+import {Directionality, Direction} from '../core/bidi/index';
 import {extendObject} from '../core/util/object-extend';
 import {ESCAPE} from '../core/keyboard/keycodes';
 import {dispatchKeyboardEvent} from '../core/testing/dispatch-events';
@@ -26,7 +26,7 @@ import {dispatchKeyboardEvent} from '../core/testing/dispatch-events';
 
 describe('MdMenu', () => {
   let overlayContainerElement: HTMLElement;
-  let dir: LayoutDirection;
+  let dir: Direction;
 
   beforeEach(async(() => {
     dir = 'ltr';
@@ -44,9 +44,7 @@ describe('MdMenu', () => {
           document.body.style.margin = '0';
           return {getContainerElement: () => overlayContainerElement};
         }},
-        {provide: Dir, useFactory: () => {
-          return {value: dir};
-        }}
+        {provide: Directionality, useFactory: () => ({value: dir})}
       ]
     });
 
@@ -87,7 +85,7 @@ describe('MdMenu', () => {
     fixture.detectChanges();
     fixture.componentInstance.trigger.openMenu();
 
-    const panel = overlayContainerElement.querySelector('.mat-menu-panel');
+    const panel = overlayContainerElement.querySelector('.mat-menu-panel')!;
     dispatchKeyboardEvent(panel, 'keydown', ESCAPE);
     fixture.detectChanges();
 
@@ -114,8 +112,38 @@ describe('MdMenu', () => {
     fixture.componentInstance.trigger.openMenu();
     fixture.detectChanges();
 
-    const overlayPane = overlayContainerElement.querySelector('.cdk-overlay-pane');
+    const overlayPane = overlayContainerElement.querySelector('.cdk-overlay-pane')!;
     expect(overlayPane.getAttribute('dir')).toEqual('rtl');
+  });
+
+  it('should transfer any custom classes from the host to the overlay', () => {
+    const fixture = TestBed.createComponent(SimpleMenu);
+
+    fixture.detectChanges();
+    fixture.componentInstance.trigger.openMenu();
+
+    const menuEl = fixture.debugElement.query(By.css('md-menu')).nativeElement;
+    const panel = overlayContainerElement.querySelector('.mat-menu-panel')!;
+
+    expect(menuEl.classList).not.toContain('custom-one');
+    expect(menuEl.classList).not.toContain('custom-two');
+
+    expect(panel.classList).toContain('custom-one');
+    expect(panel.classList).toContain('custom-two');
+  });
+
+  it('should set the "menu" role on the overlay panel', () => {
+    const fixture = TestBed.createComponent(SimpleMenu);
+    fixture.detectChanges();
+    fixture.componentInstance.trigger.openMenu();
+    fixture.detectChanges();
+
+    const menuPanel = overlayContainerElement.querySelector('.mat-menu-panel');
+
+    expect(menuPanel).toBeTruthy('Expected to find a menu panel.');
+
+    const role = menuPanel ? menuPanel.getAttribute('role') : '';
+    expect(role).toBe('menu', 'Expected panel to have the "menu" role.');
   });
 
   describe('positions', () => {
@@ -390,8 +418,8 @@ describe('MdMenu', () => {
       it('repositions the origin to be below, so the menu opens from the trigger', () => {
         subject.openMenu();
 
-        expect(subject.menuPanel.classList).toContain('mat-menu-below');
-        expect(subject.menuPanel.classList).not.toContain('mat-menu-above');
+        expect(subject.menuPanel!.classList).toContain('mat-menu-below');
+        expect(subject.menuPanel!.classList).not.toContain('mat-menu-above');
       });
 
     });
@@ -462,7 +490,7 @@ describe('MdMenu', () => {
 @Component({
   template: `
     <button [mdMenuTriggerFor]="menu" #triggerEl>Toggle menu</button>
-    <md-menu #menu="mdMenu" (close)="closeCallback()">
+    <md-menu class="custom-one custom-two" #menu="mdMenu" (close)="closeCallback()">
       <button md-menu-item> Item </button>
       <button md-menu-item disabled> Disabled </button>
     </md-menu>

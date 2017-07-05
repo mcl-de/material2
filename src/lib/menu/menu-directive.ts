@@ -1,4 +1,10 @@
-// TODO(kara): prevent-close functionality
+/**
+ * @license
+ * Copyright Google Inc. All Rights Reserved.
+ *
+ * Use of this source code is governed by an MIT-style license that can be
+ * found in the LICENSE file at https://angular.io/license
+ */
 
 import {
   AfterContentInit,
@@ -12,6 +18,7 @@ import {
   TemplateRef,
   ViewChild,
   ViewEncapsulation,
+  ElementRef,
 } from '@angular/core';
 import {MenuPositionX, MenuPositionY} from './menu-positions';
 import {throwMdMenuInvalidPositionX, throwMdMenuInvalidPositionY} from './menu-errors';
@@ -26,7 +33,6 @@ import {ESCAPE} from '../core/keyboard/keycodes';
 @Component({
   moduleId: module.id,
   selector: 'md-menu, mat-menu',
-  host: {'role': 'menu'},
   templateUrl: 'menu.html',
   styleUrls: ['menu.css'],
   encapsulation: ViewEncapsulation.None,
@@ -85,15 +91,21 @@ export class MdMenu implements AfterContentInit, MdMenuPanel, OnDestroy {
    */
   @Input('class')
   set classList(classes: string) {
-    this._classList = classes.split(' ').reduce((obj: any, className: string) => {
-      obj[className] = true;
-      return obj;
-    }, {});
-    this.setPositionClasses();
+    if (classes && classes.length) {
+      this._classList = classes.split(' ').reduce((obj: any, className: string) => {
+        obj[className] = true;
+        return obj;
+      }, {});
+
+      this._elementRef.nativeElement.className = '';
+      this.setPositionClasses();
+    }
   }
 
   /** Event emitted when the menu is closed. */
   @Output() close = new EventEmitter<void>();
+
+  constructor(private _elementRef: ElementRef) { }
 
   ngAfterContentInit() {
     this._keyManager = new FocusKeyManager(this.items).withWrap();

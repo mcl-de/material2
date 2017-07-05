@@ -94,6 +94,17 @@
 
       <button color="primary" md-raised-button>Submit</button>
     </form>
+
+    <h4>With a custom error function</h4>
+    <md-input-container>
+      <input mdInput
+        placeholder="example"
+        [(ngModel)]="errorMessageExample4"
+        [errorStateMatcher]="customErrorStateMatcher"
+        required>
+      <md-error>This field is required</md-error>
+    </md-input-container>
+
   </md-card-content>
 </md-card>
 
@@ -101,7 +112,7 @@
   <md-toolbar color="primary">Prefix + Suffix</md-toolbar>
   <md-card-content>
     <h4>Text</h4>
-    <md-input-container align="end">
+    <md-input-container class="demo-text-align-end">
       <input mdInput placeholder="amount">
       <span mdPrefix>$&nbsp;</span>
       <span mdSuffix>.00</span>
@@ -198,11 +209,13 @@
 
 <md-card class="demo-card demo-basic">
   <md-toolbar color="primary">
-    Hello&nbsp;
-    <md-input-container color="accent">
-      <input mdInput [(ngModel)]="name" type="text" placeholder="First name">
-    </md-input-container>,
-    how are you?
+    <span>
+      Hello&nbsp;
+      <md-input-container color="accent">
+        <input mdInput [(ngModel)]="name" type="text" placeholder="First name">
+      </md-input-container>,
+      how are you?
+    </span>
   </md-toolbar>
   <md-card-content>
     <p>
@@ -301,13 +314,13 @@
         <input mdInput placeholder="Prefixed" value="example">
         <div mdPrefix>Example:&nbsp;</div>
       </md-input-container>
-      <md-input-container align="end">
+      <md-input-container class="demo-text-align-end">
         <input mdInput placeholder="Suffixed" value="123">
         <span mdSuffix>.00 €</span>
       </md-input-container>
       <br/>
       Both:
-      <md-input-container align="end">
+      <md-input-container class="demo-text-align-end">
         <input mdInput #email placeholder="Email Address" value="angular-core">
         <span mdPrefix><md-icon [class.primary]="email.focused">email</md-icon>&nbsp;</span>
         <span mdSuffix [class.primary]="email.focused">&nbsp;@gmail.com</span>
@@ -375,7 +388,10 @@
 <md-card class="demo-card demo-basic">
   <md-toolbar color="primary">Textarea Autosize</md-toolbar>
   <md-card-content>
+    <h3>Regular &lt;textarea&gt;</h3>
     <textarea mdTextareaAutosize class="demo-textarea"></textarea>
+
+    <h3>&lt;textarea&gt; with md-input-container</h3>
     <div>
       <md-input-container>
         <textarea mdInput
@@ -383,5 +399,14 @@
                   placeholder="Autosized textarea"></textarea>
       </md-input-container>
     </div>
+
+    <h3>&lt;textarea&gt; with ngModel</h3>
+    <div>
+      <label>Input with same ngModel <input [(ngModel)]="textareaNgModelValue"></label>
+    </div>
+    <label>
+      Plain textarea with auto size
+      <textarea mdTextareaAutosize [(ngModel)]="textareaNgModelValue"></textarea>
+    </label>
   </md-card-content>
 </md-card>

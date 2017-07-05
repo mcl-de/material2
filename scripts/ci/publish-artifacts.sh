@@ -3,6 +3,9 @@
 # Script that runs after the testing stage of Travis passed.
 # Build artifacts and docs content will be published to different repositories.
 
+# The script should immediately exit if any command in the script fails.
+set -e
+
 # Go to the project root directory
 cd $(dirname $0)/../..
 
@@ -27,6 +30,6 @@ $(npm bin)/gulp docs
 
 # Deploy the screenshot and dashboard functions for each push build.
 ./scripts/deploy/deploy-screenshot-functions.sh &
-./scripts/deploy/deploy-dashboard-functions.sh &
+./scripts/deploy/deploy-dashboard.sh &
 
 wait

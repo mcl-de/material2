@@ -1,3 +1,11 @@
+/**
+ * @license
+ * Copyright Google Inc. All Rights Reserved.
+ *
+ * Use of this source code is governed by an MIT-style license that can be
+ * found in the LICENSE file at https://angular.io/license
+ */
+
 import {
   Component,
   ComponentRef,
@@ -29,7 +37,7 @@ import {FocusTrapFactory, FocusTrap} from '../core/a11y/focus-trap';
  * @docs-private
  */
 export function throwMdDialogContentAlreadyAttachedError() {
-  throw new Error('Attempting to attach dialog content after content is already attached');
+  throw Error('Attempting to attach dialog content after content is already attached');
 }
 
 /**
@@ -47,17 +55,18 @@ export function throwMdDialogContentAlreadyAttachedError() {
     trigger('slideDialog', [
       // Note: The `enter` animation doesn't transition to something like `translate3d(0, 0, 0)
       // scale(1)`, because for some reason specifying the transform explicitly, causes IE both
-      // to blur the dialog content and decimate the animation performance. Leaving it blank
+      // to blur the dialog content and decimate the animation performance. Leaving it as `none`
       // solves both issues.
-      state('enter', style({ opacity: 1 })),
+      state('enter', style({ transform: 'none', opacity: 1 })),
       state('void', style({ transform: 'translate3d(0, 25%, 0) scale(0.9)', opacity: 0 })),
       state('exit', style({ transform: 'translate3d(0, 25%, 0)', opacity: 0 })),
       transition('* => *', animate('400ms cubic-bezier(0.25, 0.8, 0.25, 1)')),
     ])
   ],
   host: {
-    '[class.mat-dialog-container]': 'true',
-    '[attr.role]': 'dialogConfig?.role',
+    'class': 'mat-dialog-container',
+    '[attr.role]': '_config?.role',
+    '[attr.aria-labelledby]': '_ariaLabelledBy',
     '[@slideDialog]': '_state',
     '(@slideDialog.done)': '_onAnimationDone($event)',
   },
@@ -70,19 +79,22 @@ export class MdDialogContainer extends BasePortalHost {
   private _focusTrap: FocusTrap;
 
   /** Element that was focused before the dialog was opened. Save this to restore upon close. */
-  private _elementFocusedBeforeDialogWasOpened: HTMLElement = null;
+  private _elementFocusedBeforeDialogWasOpened: HTMLElement | null = null;
 
   /** Reference to the global document object. */
   private _document: Document;
 
   /** The dialog configuration. */
-  dialogConfig: MdDialogConfig;
+  _config: MdDialogConfig;
 
   /** State of the dialog animation. */
   _state: 'void' | 'enter' | 'exit' = 'enter';
 
   /** Emits the current animation state whenever it changes. */
   _onAnimationStateChange = new EventEmitter<AnimationEvent>();
+
+  /** ID of the element that should be considered as the dialog's label. */
+  _ariaLabelledBy: string | null = null;
 
   constructor(
     private _ngZone: NgZone,

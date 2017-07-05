@@ -1,3 +1,11 @@
+/**
+ * @license
+ * Copyright Google Inc. All Rights Reserved.
+ *
+ * Use of this source code is governed by an MIT-style license that can be
+ * found in the LICENSE file at https://angular.io/license
+ */
+
 import {
     AfterViewInit,
     Directive,
@@ -13,8 +21,8 @@ import {MdMenuPanel} from './menu-panel';
 import {throwMdMenuMissingError} from './menu-errors';
 import {
     isFakeMousedownFromScreenReader,
-    Dir,
-    LayoutDirection,
+    Directionality,
+    Direction,
     Overlay,
     OverlayState,
     OverlayRef,
@@ -44,7 +52,7 @@ import {MenuPositionX, MenuPositionY} from './menu-positions';
 })
 export class MdMenuTrigger implements AfterViewInit, OnDestroy {
   private _portal: TemplatePortal;
-  private _overlayRef: OverlayRef;
+  private _overlayRef: OverlayRef | null = null;
   private _menuOpen: boolean = false;
   private _backdropSubscription: Subscription;
   private _positionSubscription: Subscription;
@@ -78,7 +86,8 @@ export class MdMenuTrigger implements AfterViewInit, OnDestroy {
   @Output() onMenuClose = new EventEmitter<void>();
 
   constructor(private _overlay: Overlay, private _element: ElementRef,
-              private _viewContainerRef: ViewContainerRef, @Optional() private _dir: Dir) { }
+              private _viewContainerRef: ViewContainerRef,
+              @Optional() private _dir: Directionality) { }
 
   ngAfterViewInit() {
     this._checkMenu();
@@ -98,8 +107,7 @@ export class MdMenuTrigger implements AfterViewInit, OnDestroy {
   /** Opens the menu. */
   openMenu(): void {
     if (!this._menuOpen) {
-      this._createOverlay();
-      this._overlayRef.attach(this._portal);
+      this._createOverlay().attach(this._portal);
       this._subscribeToBackdrop();
       this._initMenu();
     }
@@ -130,7 +138,7 @@ export class MdMenuTrigger implements AfterViewInit, OnDestroy {
   }
 
   /** The text direction of the containing app. */
-  get dir(): LayoutDirection {
+  get dir(): Direction {
     return this._dir && this._dir.value === 'rtl' ? 'rtl' : 'ltr';
   }
 
@@ -141,9 +149,11 @@ export class MdMenuTrigger implements AfterViewInit, OnDestroy {
    * explicitly when the menu is closed or destroyed.
    */
   private _subscribeToBackdrop(): void {
-    this._backdropSubscription = this._overlayRef.backdropClick().subscribe(() => {
-      this.menu._emitCloseEvent();
-    });
+    if (this._overlayRef) {
+      this._backdropSubscription = this._overlayRef.backdropClick().subscribe(() => {
+        this.menu._emitCloseEvent();
+      });
+    }
   }
 
   /**
@@ -196,13 +206,15 @@ export class MdMenuTrigger implements AfterViewInit, OnDestroy {
    *  This method creates the overlay from the provided menu's template and saves its
    *  OverlayRef so that it can be attached to the DOM when openMenu is called.
    */
-  private _createOverlay(): void {
+  private _createOverlay(): OverlayRef {
     if (!this._overlayRef) {
       this._portal = new TemplatePortal(this.menu.templateRef, this._viewContainerRef);
       const config = this._getOverlayConfig();
       this._subscribeToPositions(config.positionStrategy as ConnectedPositionStrategy);
       this._overlayRef = this._overlay.create(config);
     }
+
+    return this._overlayRef;
   }
 
   /**

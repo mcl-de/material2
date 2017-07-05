@@ -1,3 +1,11 @@
+/**
+ * @license
+ * Copyright Google Inc. All Rights Reserved.
+ *
+ * Use of this source code is governed by an MIT-style license that can be
+ * found in the LICENSE file at https://angular.io/license
+ */
+
 import {
   Component,
   ElementRef,
@@ -9,12 +17,10 @@ import {
   Inject,
   Optional,
 } from '@angular/core';
-import {CommonModule} from '@angular/common';
 import {ENTER, SPACE} from '../keyboard/keycodes';
-import {coerceBooleanProperty} from '../coercion/boolean-property';
-import {MdRippleModule} from '../ripple/index';
-import {MdSelectionModule} from '../selection/index';
+import {coerceBooleanProperty} from '@angular/cdk';
 import {MATERIAL_COMPATIBILITY_MODE} from '../../core/compatibility/compatibility';
+import {MdOptgroup} from './optgroup';
 
 /**
  * Option IDs need to be unique across components, so this counter exists outside of
@@ -46,7 +52,7 @@ export class MdOptionSelectionChange {
     '[class.mat-option-disabled]': 'disabled',
     '(click)': '_selectViaInteraction()',
     '(keydown)': '_handleKeydown($event)',
-    '[class.mat-option]': 'true',
+    'class': 'mat-option',
   },
   templateUrl: 'option.html',
   encapsulation: ViewEncapsulation.None
@@ -74,7 +80,7 @@ export class MdOption {
 
   /** Whether the option is disabled. */
   @Input()
-  get disabled() { return this._disabled; }
+  get disabled() { return (this.group && this.group.disabled) || this._disabled; }
   set disabled(value: any) { this._disabled = coerceBooleanProperty(value); }
 
   /** Event emitted when the option is selected or deselected. */
@@ -82,6 +88,7 @@ export class MdOption {
 
   constructor(
     private _element: ElementRef,
+    @Optional() public readonly group: MdOptgroup,
     @Optional() @Inject(MATERIAL_COMPATIBILITY_MODE) public _isCompatibilityMode: boolean) {}
 
   /**
@@ -100,7 +107,7 @@ export class MdOption {
    */
   get viewValue(): string {
     // TODO(kara): Add input property alternative for node envs.
-    return this._getHostElement().textContent.trim();
+    return (this._getHostElement().textContent || '').trim();
   }
 
   /** Selects the option. */
@@ -142,6 +149,9 @@ export class MdOption {
   _handleKeydown(event: KeyboardEvent): void {
     if (event.keyCode === ENTER || event.keyCode === SPACE) {
       this._selectViaInteraction();
+
+      // Prevent the page from scrolling down and form submits.
+      event.preventDefault();
     }
   }
 
@@ -172,10 +182,3 @@ export class MdOption {
   }
 
 }
-
-@NgModule({
-  imports: [MdRippleModule, CommonModule, MdSelectionModule],
-  exports: [MdOption],
-  declarations: [MdOption]
-})
-export class MdOptionModule {}

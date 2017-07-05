@@ -1,3 +1,11 @@
+/**
+ * @license
+ * Copyright Google Inc. All Rights Reserved.
+ *
+ * Use of this source code is governed by an MIT-style license that can be
+ * found in the LICENSE file at https://angular.io/license
+ */
+
 import {
   Component,
   ViewEncapsulation,
@@ -13,7 +21,7 @@ import {
 import {MdGridTile} from './grid-tile';
 import {TileCoordinator} from './tile-coordinator';
 import {TileStyler, FitTileStyler, RatioTileStyler, FixedTileStyler} from './tile-styler';
-import {Dir} from '../core';
+import {Directionality} from '../core';
 import {
   coerceToString,
   coerceToNumber,
@@ -33,7 +41,7 @@ const MD_FIT_MODE = 'fit';
   styleUrls: ['grid-list.css'],
   host: {
     'role': 'list',
-    '[class.mat-grid-list]': 'true',
+    'class': 'mat-grid-list',
   },
   encapsulation: ViewEncapsulation.None,
 })
@@ -61,7 +69,7 @@ export class MdGridList implements OnInit, AfterContentChecked {
   constructor(
       private _renderer: Renderer2,
       private _element: ElementRef,
-      @Optional() private _dir: Dir) {}
+      @Optional() private _dir: Directionality) {}
 
   /** Amount of columns in the grid list. */
   @Input()
@@ -96,7 +104,7 @@ export class MdGridList implements OnInit, AfterContentChecked {
   /** Throw a friendly error if cols property is missing */
   private _checkCols() {
     if (!this.cols) {
-      throw new Error(`md-grid-list: must pass in number of columns. ` +
+      throw Error(`md-grid-list: must pass in number of columns. ` +
                       `Example: <md-grid-list cols="3">`);
     }
   }
@@ -134,7 +142,7 @@ export class MdGridList implements OnInit, AfterContentChecked {
   }
 
   /** Sets style on the main grid-list element, given the style name and value. */
-  _setListStyle(style: [string, string]): void {
+  _setListStyle(style: [string, string] | null): void {
     if (style) {
       this._renderer.setStyle(this._element.nativeElement, style[0], style[1]);
     }

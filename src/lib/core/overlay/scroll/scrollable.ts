@@ -1,8 +1,15 @@
+/**
+ * @license
+ * Copyright Google Inc. All Rights Reserved.
+ *
+ * Use of this source code is governed by an MIT-style license that can be
+ * found in the LICENSE file at https://angular.io/license
+ */
+
 import {Directive, ElementRef, OnInit, OnDestroy, NgZone, Renderer2} from '@angular/core';
 import {Observable} from 'rxjs/Observable';
 import {Subject} from 'rxjs/Subject';
 import {ScrollDispatcher} from './scroll-dispatcher';
-import 'rxjs/add/observable/fromEvent';
 
 
 /**
@@ -15,7 +22,7 @@ import 'rxjs/add/observable/fromEvent';
 })
 export class Scrollable implements OnInit, OnDestroy {
   private _elementScrolled: Subject<Event> = new Subject();
-  private _scrollListener: Function;
+  private _scrollListener: Function | null;
 
   constructor(private _elementRef: ElementRef,
               private _scroll: ScrollDispatcher,
