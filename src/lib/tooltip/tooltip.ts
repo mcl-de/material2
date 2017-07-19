@@ -94,7 +94,7 @@ export const MD_TOOLTIP_SCROLL_STRATEGY_PROVIDER = {
   selector: '[md-tooltip], [mdTooltip], [mat-tooltip], [matTooltip]',
   host: {
     '(longpress)': 'show()',
-    '(touchend)': 'hide(' + TOUCHEND_HIDE_DELAY + ')',
+    '(touchend)': 'hide()',
   },
   exportAs: 'mdTooltip',
 })
@@ -129,7 +129,7 @@ export class MdTooltip implements OnDestroy {
 
     // If tooltip is disabled, hide immediately.
     if (this._disabled) {
-      this.hide(0);
+      this.hide();
     }
   }
 
@@ -251,7 +251,7 @@ export class MdTooltip implements OnDestroy {
   }
 
   /** Hides the tooltip after the delay in ms, defaults to tooltip-delay-hide or 0ms if no input */
-  hide(delay: number = this.hideDelay): void {
+  hide(): void {
     if (this._tooltipInstance) {
       this._disposeTooltip();
     }
@@ -296,7 +296,7 @@ export class MdTooltip implements OnDestroy {
     strategy.onPositionChange.subscribe(change => {
       if (change.scrollableViewProperties.isOverlayClipped &&
           this._tooltipInstance && this._tooltipInstance.isVisible()) {
-        this.hide(0);
+        this.hide();
       }
     });
 
@@ -486,7 +486,7 @@ export class TooltipComponent {
    * Begins the animation to hide the tooltip after the provided delay in ms.
    * @param delay Amount of milliseconds to delay showing the tooltip.
    */
-  hide(delay: number): void {
+  hide(): void {
     // Cancel the delayed show if it is scheduled
     if (this._showTimeoutId) {
       clearTimeout(this._showTimeoutId);
@@ -499,7 +499,7 @@ export class TooltipComponent {
       // Mark for check so if any parent component has set the
       // ChangeDetectionStrategy to OnPush it will be checked anyways
       this._markForCheck();
-    }, delay);
+    }, 0);
   }
 
   /**
@@ -543,7 +543,7 @@ export class TooltipComponent {
    */
   _handleBodyInteraction(): void {
     if (this._closeOnInteraction) {
-      this.hide(0);
+      this.hide();
     }
   }
 
