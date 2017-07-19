@@ -8,6 +8,12 @@ set -e
 
 cd "$(dirname $0)/../../"
 
+if [ -z ${MATERIAL2_DOCS_CONTENT_TOKEN} ]; then
+  echo "Error: No access token for GitHub could be found." \
+       "Please set the environment variable 'MATERIAL2_DOCS_CONTENT_TOKEN'."
+  exit 1
+fi
+
 docsPath="./dist/docs"
 packagePath="./dist/releases/material-examples"
 repoPath="/tmp/material2-docs-content"
@@ -84,6 +90,6 @@ git config credential.helper "store --file=.git/credentials"
 echo "https://${MATERIAL2_DOCS_CONTENT_TOKEN}:@github.com" > .git/credentials
 
 git add -A
-git commit -m "$commitMessage"
+git commit --allow-empty -m "$commitMessage"
 git tag "$commitSha"
 git push origin master --tags

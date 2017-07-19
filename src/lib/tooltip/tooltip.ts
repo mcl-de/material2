@@ -17,7 +17,10 @@ import {
   OnDestroy,
   Renderer2,
   ChangeDetectorRef,
+  ChangeDetectionStrategy,
   ViewEncapsulation,
+  InjectionToken,
+  Inject,
 } from '@angular/core';
 import {
   style,
@@ -34,6 +37,11 @@ import {
   ComponentPortal,
   OverlayConnectionPosition,
   OriginConnectionPosition,
+  RepositionScrollStrategy,
+  // This import is only used to define a generic type. The current TypeScript version incorrectly
+  // considers such imports as unused (https://github.com/Microsoft/TypeScript/issues/14953)
+  // tslint:disable-next-line:no-unused-variable
+  ScrollStrategy,
 } from '../core';
 import {Observable} from 'rxjs/Observable';
 import {Subject} from 'rxjs/Subject';
@@ -51,10 +59,30 @@ export const TOUCHEND_HIDE_DELAY = 1500;
 /** Time in ms to throttle repositioning after scroll events. */
 export const SCROLL_THROTTLE_MS = 20;
 
+/** CSS class that will be attached to the overlay panel. */
+export const TOOLTIP_PANEL_CLASS = 'mat-tooltip-panel';
+
 /** Creates an error to be thrown if the user supplied an invalid tooltip position. */
 export function getMdTooltipInvalidPositionError(position: string) {
   return Error(`Tooltip position "${position}" is invalid.`);
 }
+
+/** Injection token that determines the scroll handling while a tooltip is visible. */
+export const MD_TOOLTIP_SCROLL_STRATEGY =
+    new InjectionToken<() => ScrollStrategy>('md-tooltip-scroll-strategy');
+
+/** @docs-private */
+export function MD_TOOLTIP_SCROLL_STRATEGY_PROVIDER_FACTORY(overlay: Overlay) {
+  return () => overlay.scrollStrategies.reposition({ scrollThrottle: SCROLL_THROTTLE_MS });
+}
+
+/** @docs-private */
+export const MD_TOOLTIP_SCROLL_STRATEGY_PROVIDER = {
+  provide: MD_TOOLTIP_SCROLL_STRATEGY,
+  deps: [Overlay],
+  useFactory: MD_TOOLTIP_SCROLL_STRATEGY_PROVIDER_FACTORY
+};
+
 
 /**
  * Directive that attaches a material design tooltip to the host element. Animates the showing and
@@ -171,6 +199,9 @@ export class MdTooltip implements OnDestroy {
   get _matClass() { return this.tooltipClass; }
   set _matClass(v) { this.tooltipClass = v; }
 
+  private _enterListener: Function;
+  private _leaveListener: Function;
+
   constructor(
     private _overlay: Overlay,
     private _elementRef: ElementRef,
@@ -179,13 +210,16 @@ export class MdTooltip implements OnDestroy {
     private _ngZone: NgZone,
     private _renderer: Renderer2,
     private _platform: Platform,
+    @Inject(MD_TOOLTIP_SCROLL_STRATEGY) private _scrollStrategy,
     @Optional() private _dir: Directionality) {
 
     // The mouse events shouldn't be bound on iOS devices, because
     // they can prevent the first tap from firing its click event.
     if (!_platform.IOS) {
-      _renderer.listen(_elementRef.nativeElement, 'mouseenter', () => this.show());
-      _renderer.listen(_elementRef.nativeElement, 'mouseleave', () => this.hide());
+      this._enterListener =
+        _renderer.listen(_elementRef.nativeElement, 'mouseenter', () => this.show());
+      this._leaveListener =
+        _renderer.listen(_elementRef.nativeElement, 'mouseleave', () => this.hide());
     }
   }
 
@@ -195,6 +229,11 @@ export class MdTooltip implements OnDestroy {
   ngOnDestroy() {
     if (this._tooltipInstance) {
       this._disposeTooltip();
+    }
+    // Clean up the event listeners set in the constructor
+    if (!this._platform.IOS) {
+      this._enterListener();
+      this._leaveListener();
     }
   }
 
@@ -265,9 +304,8 @@ export class MdTooltip implements OnDestroy {
 
     config.direction = this._dir ? this._dir.value : 'ltr';
     config.positionStrategy = strategy;
-    config.scrollStrategy = this._overlay.scrollStrategies.reposition({
-      scrollThrottle: SCROLL_THROTTLE_MS
-    });
+    config.panelClass = TOOLTIP_PANEL_CLASS;
+    config.scrollStrategy = this._scrollStrategy();
 
     this._overlayRef = this._overlay.create(config);
 
@@ -369,6 +407,7 @@ export type TooltipVisibility = 'initial' | 'visible' | 'hidden';
   templateUrl: 'tooltip.html',
   styleUrls: ['tooltip.css'],
   encapsulation: ViewEncapsulation.None,
+  changeDetection: ChangeDetectionStrategy.OnPush,
   animations: [
     trigger('state', [
       state('void', style({transform: 'scale(0)'})),

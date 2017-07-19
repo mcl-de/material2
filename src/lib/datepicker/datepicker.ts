@@ -21,28 +21,52 @@ import {
   ViewEncapsulation,
   NgZone,
   Inject,
+  InjectionToken,
 } from '@angular/core';
 import {DOCUMENT} from '@angular/platform-browser';
-import {Overlay} from '../core/overlay/overlay';
-import {OverlayRef} from '../core/overlay/overlay-ref';
+import {
+  Overlay,
+  OverlayRef,
+  OverlayState,
+  RepositionScrollStrategy,
+  // This import is only used to define a generic type. The current TypeScript version incorrectly
+  // considers such imports as unused (https://github.com/Microsoft/TypeScript/issues/14953)
+  // tslint:disable-next-line:no-unused-variable
+  ScrollStrategy,
+} from '../core/overlay/index';
 import {ComponentPortal} from '../core/portal/portal';
-import {OverlayState} from '../core/overlay/overlay-state';
 import {Directionality} from '../core/bidi/index';
 import {MdDialog} from '../dialog/dialog';
 import {MdDialogRef} from '../dialog/dialog-ref';
 import {PositionStrategy} from '../core/overlay/position/position-strategy';
 import {MdDatepickerInput} from './datepicker-input';
 import {Subscription} from 'rxjs/Subscription';
-import {MdDialogConfig} from '../dialog/dialog-config';
 import {DateAdapter} from '../core/datetime/index';
 import {createMissingDateImplError} from './datepicker-errors';
 import {ESCAPE} from '../core/keyboard/keycodes';
 import {MdCalendar} from './calendar';
 import {first} from '../core/rxjs/index';
+import {coerceBooleanProperty} from '@angular/cdk';
 
 
 /** Used to generate a unique ID for each datepicker instance. */
 let datepickerUid = 0;
+
+/** Injection token that determines the scroll handling while the calendar is open. */
+export const MD_DATEPICKER_SCROLL_STRATEGY =
+    new InjectionToken<() => ScrollStrategy>('md-datepicker-scroll-strategy');
+
+/** @docs-private */
+export function MD_DATEPICKER_SCROLL_STRATEGY_PROVIDER_FACTORY(overlay: Overlay) {
+  return () => overlay.scrollStrategies.reposition();
+}
+
+/** @docs-private */
+export const MD_DATEPICKER_SCROLL_STRATEGY_PROVIDER = {
+  provide: MD_DATEPICKER_SCROLL_STRATEGY,
+  deps: [Overlay],
+  useFactory: MD_DATEPICKER_SCROLL_STRATEGY_PROVIDER_FACTORY,
+};
 
 
 /**
@@ -95,6 +119,7 @@ export class MdDatepickerContent<D> implements AfterContentInit {
   moduleId: module.id,
   selector: 'md-datepicker, mat-datepicker',
   template: '',
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class MdDatepicker<D> implements OnDestroy {
   /** The date to open the calendar to initially. */
@@ -115,6 +140,16 @@ export class MdDatepicker<D> implements OnDestroy {
    * than a popup and elements have more padding to allow for bigger touch targets.
    */
   @Input() touchUi = false;
+
+  /** Whether the datepicker pop-up should be disabled. */
+  @Input()
+  get disabled() {
+    return this._disabled === undefined ? this._datepickerInput.disabled : this._disabled;
+  }
+  set disabled(value: any) {
+    this._disabled = coerceBooleanProperty(value);
+  }
+  private _disabled: boolean;
 
   /** Emits new selected date when selected date changes. */
   @Output() selectedChanged = new EventEmitter<D>();
@@ -163,6 +198,7 @@ export class MdDatepicker<D> implements OnDestroy {
               private _overlay: Overlay,
               private _ngZone: NgZone,
               private _viewContainerRef: ViewContainerRef,
+              @Inject(MD_DATEPICKER_SCROLL_STRATEGY) private _scrollStrategy,
               @Optional() private _dateAdapter: DateAdapter<D>,
               @Optional() private _dir: Directionality,
               @Optional() @Inject(DOCUMENT) private _document: any) {
@@ -206,7 +242,7 @@ export class MdDatepicker<D> implements OnDestroy {
 
   /** Open the calendar. */
   open(): void {
-    if (this.opened) {
+    if (this.opened || this.disabled) {
       return;
     }
     if (!this._datepickerInput) {
@@ -282,7 +318,7 @@ export class MdDatepicker<D> implements OnDestroy {
     overlayState.hasBackdrop = true;
     overlayState.backdropClass = 'md-overlay-transparent-backdrop';
     overlayState.direction = this._dir ? this._dir.value : 'ltr';
-    overlayState.scrollStrategy = this._overlay.scrollStrategies.reposition();
+    overlayState.scrollStrategy = this._scrollStrategy();
 
     this._popupRef = this._overlay.create(overlayState);
   }
