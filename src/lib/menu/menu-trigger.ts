@@ -16,6 +16,8 @@ import {
     Optional,
     Output,
     ViewContainerRef,
+    InjectionToken,
+    Inject,
 } from '@angular/core';
 import {MdMenuPanel} from './menu-panel';
 import {throwMdMenuMissingError} from './menu-errors';
@@ -30,9 +32,32 @@ import {
     ConnectedPositionStrategy,
     HorizontalConnectionPos,
     VerticalConnectionPos,
+    RepositionScrollStrategy,
+    // This import is only used to define a generic type. The current TypeScript version incorrectly
+    // considers such imports as unused (https://github.com/Microsoft/TypeScript/issues/14953)
+    // tslint:disable-next-line:no-unused-variable
+    ScrollStrategy,
 } from '../core';
 import {Subscription} from 'rxjs/Subscription';
 import {MenuPositionX, MenuPositionY} from './menu-positions';
+import {MdMenu} from './menu-directive';
+
+/** Injection token that determines the scroll handling while the menu is open. */
+export const MD_MENU_SCROLL_STRATEGY =
+    new InjectionToken<() => ScrollStrategy>('md-menu-scroll-strategy');
+
+/** @docs-private */
+export function MD_MENU_SCROLL_STRATEGY_PROVIDER_FACTORY(overlay: Overlay) {
+  return () => overlay.scrollStrategies.reposition();
+}
+
+/** @docs-private */
+export const MD_MENU_SCROLL_STRATEGY_PROVIDER = {
+  provide: MD_MENU_SCROLL_STRATEGY,
+  deps: [Overlay],
+  useFactory: MD_MENU_SCROLL_STRATEGY_PROVIDER_FACTORY,
+};
+
 
 // TODO(andrewseguin): Remove the kebab versions in favor of camelCased attribute selectors
 
@@ -87,6 +112,7 @@ export class MdMenuTrigger implements AfterViewInit, OnDestroy {
 
   constructor(private _overlay: Overlay, private _element: ElementRef,
               private _viewContainerRef: ViewContainerRef,
+              @Inject(MD_MENU_SCROLL_STRATEGY) private _scrollStrategy,
               @Optional() private _dir: Directionality) { }
 
   ngAfterViewInit() {
@@ -110,6 +136,10 @@ export class MdMenuTrigger implements AfterViewInit, OnDestroy {
       this._createOverlay().attach(this._portal);
       this._subscribeToBackdrop();
       this._initMenu();
+
+      if (this.menu instanceof MdMenu) {
+        this.menu._startAnimation();
+      }
     }
   }
 
@@ -119,6 +149,10 @@ export class MdMenuTrigger implements AfterViewInit, OnDestroy {
       this._overlayRef.detach();
       this._backdropSubscription.unsubscribe();
       this._resetMenu();
+
+      if (this.menu instanceof MdMenu) {
+        this.menu._resetAnimation();
+      }
     }
   }
 
@@ -228,7 +262,7 @@ export class MdMenuTrigger implements AfterViewInit, OnDestroy {
     overlayState.hasBackdrop = true;
     overlayState.backdropClass = 'cdk-overlay-transparent-backdrop';
     overlayState.direction = this.dir;
-    overlayState.scrollStrategy = this._overlay.scrollStrategies.reposition();
+    overlayState.scrollStrategy = this._scrollStrategy();
     return overlayState;
   }
 
@@ -238,13 +272,9 @@ export class MdMenuTrigger implements AfterViewInit, OnDestroy {
    * correct, even if a fallback position is used for the overlay.
    */
   private _subscribeToPositions(position: ConnectedPositionStrategy): void {
-    this._positionSubscription = position.onPositionChange.subscribe((change) => {
-      const posX: MenuPositionX = change.connectionPair.originX === 'start' ? 'after' : 'before';
-      let posY: MenuPositionY = change.connectionPair.originY === 'top' ? 'below' : 'above';
-
-      if (!this.menu.overlapTrigger) {
-        posY = posY === 'below' ? 'above' : 'below';
-      }
+    this._positionSubscription = position.onPositionChange.subscribe(change => {
+      const posX: MenuPositionX = change.connectionPair.overlayX === 'start' ? 'after' : 'before';
+      const posY: MenuPositionY = change.connectionPair.overlayY === 'top' ? 'below' : 'above';
 
       this.menu.setPositionClasses(posX, posY);
     });
