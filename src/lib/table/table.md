@@ -2,16 +2,13 @@ The `md-table` provides a Material Design styled data-table that can be used to 
 data.
 
 This table builds on the foundation of the CDK data-table and uses a similar interface for its
-data source input and template, except that its element selectors will be prefixed with `md-`
-instead of `cdk-`.
- 
-<!-- example(table-basic) -->
-
-Note that the column definition directives (`cdkColumnDef` and `cdkHeaderCellDef`) are still
-prefixed with `cdk-`.
+data source input and template, except that its element and attribute selectors will be prefixed 
+with `md-` instead of `cdk-`.
 
 For more information on the interface and how it works, see the
 [guide covering the CDK data-table](https://material.angular.io/guide/cdk-table).
+
+<!-- example(table-basic) -->
 
 ### Features
 
@@ -29,6 +26,7 @@ paginator emits events that can be used to trigger an update via the table's dat
 <!-- example(table-pagination) -->
 
 #### Sorting
+
 Use the `mdSort` directive and `<md-sort-header>` adds a sorting UI the table's column headers. The
 sort headers emit events that can be used to trigger an update via the table's data source.
 
@@ -36,10 +34,9 @@ sort headers emit events that can be used to trigger an update via the table's d
 
 #### Filtering
 
-While Angular Material does not offer a specific component for filtering tabular data, the table's 
+While Angular Material does not offer a specific component for filtering tabular data, the table's
 data source can be updated based on any custom filter UI. Any filtering pattern need only trigger
 an update via the table's data source.
-
 
 <!--- example(table-filtering) -->
 

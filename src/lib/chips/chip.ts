@@ -17,9 +17,9 @@ import {
   Renderer2,
   forwardRef,
 } from '@angular/core';
-
-import {Focusable} from '../core/a11y/focus-key-manager';
-import {coerceBooleanProperty} from '@angular/cdk';
+import {Subject} from 'rxjs/Subject';
+import {FocusableOption} from '../core/a11y/focus-key-manager';
+import {coerceBooleanProperty} from '@angular/cdk/coercion';
 import {CanColor, mixinColor} from '../core/common-behaviors/color';
 import {CanDisable, mixinDisabled} from '../core/common-behaviors/disabled';
 import {SPACE, BACKSPACE, DELETE} from '../core/keyboard/keycodes';
@@ -53,6 +53,7 @@ export class MdBasicChip { }
   selector: `md-basic-chip, [md-basic-chip], md-chip, [md-chip],
              mat-basic-chip, [mat-basic-chip], mat-chip, [mat-chip]`,
   inputs: ['color', 'disabled'],
+  exportAs: 'mdChip',
   host: {
     'class': 'mat-chip',
     'tabindex': '-1',
@@ -60,13 +61,15 @@ export class MdBasicChip { }
     '[class.mat-chip-selected]': 'selected',
     '[attr.disabled]': 'disabled || null',
     '[attr.aria-disabled]': 'disabled.toString()',
+    '[attr.aria-selected]': 'ariaSelected',
     '(click)': '_handleClick($event)',
     '(keydown)': '_handleKeydown($event)',
     '(focus)': '_hasFocus = true',
     '(blur)': '_hasFocus = false',
   }
 })
-export class MdChip extends _MdChipMixinBase implements Focusable, OnDestroy, CanColor, CanDisable {
+export class MdChip extends _MdChipMixinBase implements FocusableOption, OnDestroy, CanColor,
+  CanDisable {
 
   @ContentChild(forwardRef(() => MdChipRemove)) _chipRemove: MdChipRemove;
 
@@ -106,8 +109,8 @@ export class MdChip extends _MdChipMixinBase implements Focusable, OnDestroy, Ca
   /** Whether the chip has focus. */
   _hasFocus: boolean = false;
 
-  /** Emitted when the chip is focused. */
-  onFocus = new EventEmitter<MdChipEvent>();
+  /** Emits when the chip is focused. */
+  _onFocus = new Subject<MdChipEvent>();
 
   /** Emitted when the chip is selected. */
   @Output() select = new EventEmitter<MdChipEvent>();
@@ -117,6 +120,10 @@ export class MdChip extends _MdChipMixinBase implements Focusable, OnDestroy, Ca
 
   /** Emitted when the chip is destroyed. */
   @Output() destroy = new EventEmitter<MdChipEvent>();
+
+  get ariaSelected(): string | null {
+    return this.selectable ? this.selected.toString() : null;
+  }
 
   constructor(renderer: Renderer2, elementRef: ElementRef) {
     super(renderer, elementRef);
@@ -138,7 +145,7 @@ export class MdChip extends _MdChipMixinBase implements Focusable, OnDestroy, Ca
   /** Allows for programmatic focusing of the chip. */
   focus(): void {
     this._elementRef.nativeElement.focus();
-    this.onFocus.emit({chip: this});
+    this._onFocus.next({chip: this});
   }
 
   /**

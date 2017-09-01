@@ -14,7 +14,7 @@ import {
   OnChanges,
   OnInit,
   Renderer2,
-  SimpleChange,
+  SimpleChanges,
   ViewEncapsulation,
   Attribute,
 } from '@angular/core';
@@ -33,12 +33,6 @@ export const _MdIconMixinBase = mixinColor(MdIconBase);
 
 /**
  * Component to display an icon. It can be used in the following ways:
- * - Specify the svgSrc input to load an SVG icon from a URL. The SVG content is directly inlined
- *   as a child of the <md-icon> component, so that CSS styles can easily be applied to it.
- *   The URL is loaded via an XMLHttpRequest, so it must be on the same domain as the page or its
- *   server must be configured to allow cross-domain requests.
- *   Example:
- *     <md-icon svgSrc="assets/arrow.svg"></md-icon>
  *
  * - Specify the svgIcon input to load an SVG icon from a URL previously registered with the
  *   addSvgIcon, addSvgIconInNamespace, addSvgIconSet, or addSvgIconSetInNamespace methods of
@@ -124,27 +118,26 @@ export class MdIcon extends _MdIconMixinBase implements OnChanges, OnInit, CanCo
     }
     const parts = iconName.split(':');
     switch (parts.length) {
-      case 1:
-        // Use default namespace.
-        return ['', parts[0]];
-      case 2:
-        return <[string, string]>parts;
-      default:
-        throw Error(`Invalid icon name: "${iconName}"`);
+      case 1: return ['', parts[0]]; // Use default namespace.
+      case 2: return <[string, string]>parts;
+      default: throw Error(`Invalid icon name: "${iconName}"`);
     }
   }
 
-  ngOnChanges(changes: {[propertyName: string]: SimpleChange}) {
-    const changedInputs = Object.keys(changes);
+  ngOnChanges(changes: SimpleChanges) {
     // Only update the inline SVG icon if the inputs changed, to avoid unnecessary DOM operations.
-    if (changedInputs.indexOf('svgIcon') != -1 || changedInputs.indexOf('svgSrc') != -1) {
+    if (changes.svgIcon) {
       if (this.svgIcon) {
         const [namespace, iconName] = this._splitIconName(this.svgIcon);
+
         first.call(this._mdIconRegistry.getNamedSvgIcon(iconName, namespace)).subscribe(
             svg => this._setSvgElement(svg),
             (err: Error) => console.log(`Error retrieving icon: ${err.message}`));
+      } else {
+        this._clearSvgElement();
       }
     }
+
     if (this._usingFontIcon()) {
       this._updateFontIconClasses();
     }
@@ -163,22 +156,31 @@ export class MdIcon extends _MdIconMixinBase implements OnChanges, OnInit, CanCo
   }
 
   private _setSvgElement(svg: SVGElement) {
+    this._clearSvgElement();
+    this._renderer.appendChild(this._elementRef.nativeElement, svg);
+  }
+
+  private _clearSvgElement() {
     const layoutElement = this._elementRef.nativeElement;
-    // Remove existing child nodes and add the new SVG element.
-    // We would use renderer.detachView(Array.from(layoutElement.childNodes)) here,
-    // but it fails in IE11: https://github.com/angular/angular/issues/6327
-    layoutElement.innerHTML = '';
-    this._renderer.appendChild(layoutElement, svg);
+    const childCount = layoutElement.childNodes.length;
+
+    // Remove existing child nodes and add the new SVG element. Note that we can't
+    // use innerHTML, because IE will throw if the element has a data binding.
+    for (let i = 0; i < childCount; i++) {
+      this._renderer.removeChild(layoutElement, layoutElement.childNodes[i]);
+    }
   }
 
   private _updateFontIconClasses() {
     if (!this._usingFontIcon()) {
       return;
     }
+
     const elem = this._elementRef.nativeElement;
     const fontSetClass = this.fontSet ?
         this._mdIconRegistry.classNameForFontAlias(this.fontSet) :
         this._mdIconRegistry.getDefaultFontSetClass();
+
     if (fontSetClass != this._previousFontSetClass) {
       if (this._previousFontSetClass) {
         this._renderer.removeClass(elem, this._previousFontSetClass);

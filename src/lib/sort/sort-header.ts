@@ -7,15 +7,28 @@
  */
 
 import {
-  ChangeDetectionStrategy, ChangeDetectorRef, Component, Input,
-  Optional, ViewEncapsulation
+  ChangeDetectionStrategy,
+  ChangeDetectorRef,
+  Component,
+  Input,
+  Optional,
+  ViewEncapsulation
 } from '@angular/core';
+import {coerceBooleanProperty} from '@angular/cdk/coercion';
+import {
+  trigger,
+  state,
+  style,
+  animate,
+  transition
+} from '@angular/animations';
+import {CdkColumnDef} from '@angular/cdk/table';
+import {Subscription} from 'rxjs/Subscription';
+import {merge} from 'rxjs/observable/merge';
 import {MdSort, MdSortable} from './sort';
 import {MdSortHeaderIntl} from './sort-header-intl';
-import {CdkColumnDef} from '@angular/cdk';
-import {coerceBooleanProperty} from '../core';
 import {getMdSortHeaderNotContainedWithinMdSortError} from './sort-errors';
-import {Subscription} from 'rxjs/Subscription';
+
 
 /**
  * Applies sorting behavior (click to change sort) and styles to an element, including an
@@ -37,10 +50,16 @@ import {Subscription} from 'rxjs/Subscription';
   },
   encapsulation: ViewEncapsulation.None,
   changeDetection: ChangeDetectionStrategy.OnPush,
+  animations: [
+    trigger('indicatorRotate', [
+      state('asc', style({transform: 'rotate(45deg)'})),
+      state('desc', style({transform: 'rotate(225deg)'})),
+      transition('asc <=> desc', animate('225ms cubic-bezier(0.4, 0.0, 0.2, 1)'))
+    ])
+  ]
 })
 export class MdSortHeader implements MdSortable {
-  /** @docs-private  */
-  sortSubscription: Subscription;
+  private _rerenderSubscription: Subscription;
 
   /**
    * ID of this sort header. If used within the context of a CdkColumnDef, this will default to
@@ -65,14 +84,16 @@ export class MdSortHeader implements MdSortable {
   set _id(v: string) { this.id = v; }
 
   constructor(public _intl: MdSortHeaderIntl,
-              private _changeDetectorRef: ChangeDetectorRef,
+              changeDetectorRef: ChangeDetectorRef,
               @Optional() public _sort: MdSort,
               @Optional() public _cdkColumnDef: CdkColumnDef) {
     if (!_sort) {
       throw getMdSortHeaderNotContainedWithinMdSortError();
     }
 
-    this.sortSubscription = _sort.mdSortChange.subscribe(() => _changeDetectorRef.markForCheck());
+    this._rerenderSubscription = merge(_sort.mdSortChange, _intl.changes).subscribe(() => {
+      changeDetectorRef.markForCheck();
+    });
   }
 
   ngOnInit() {
@@ -85,7 +106,7 @@ export class MdSortHeader implements MdSortable {
 
   ngOnDestroy() {
     this._sort.deregister(this);
-    this.sortSubscription.unsubscribe();
+    this._rerenderSubscription.unsubscribe();
   }
 
   /** Whether this MdSortHeader is currently sorted in either ascending or descending order. */

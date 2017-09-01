@@ -22,13 +22,16 @@ import {
   AfterContentInit,
   AfterContentChecked,
   OnDestroy,
+  ViewEncapsulation,
 } from '@angular/core';
-import {coerceBooleanProperty} from '../core';
+import {coerceBooleanProperty} from '@angular/cdk/coercion';
+import {map} from '@angular/cdk/rxjs';
 import {Observable} from 'rxjs/Observable';
 import {Subscription} from 'rxjs/Subscription';
 import {MdTab} from './tab';
-import {map} from '../core/rxjs/index';
 import {merge} from 'rxjs/observable/merge';
+import {CanDisableRipple, mixinDisableRipple} from '../core/common-behaviors/disable-ripple';
+import {CanColor, mixinColor, ThemePalette} from '../core/common-behaviors/color';
 
 
 /** Used to generate unique ID's for each tab component */
@@ -43,6 +46,13 @@ export class MdTabChangeEvent {
 /** Possible positions for the tab header. */
 export type MdTabHeaderPosition = 'above' | 'below';
 
+// Boilerplate for applying mixins to MdTabGroup.
+/** @docs-private */
+export class MdTabGroupBase {
+  constructor(public _renderer: Renderer2, public _elementRef: ElementRef) {}
+}
+export const _MdTabGroupMixinBase = mixinColor(mixinDisableRipple(MdTabGroupBase), 'primary');
+
 /**
  * Material design tab-group component.  Supports basic tab pairs (label + content) and includes
  * animated ink-bar, keyboard navigation, and screen reader.
@@ -53,15 +63,17 @@ export type MdTabHeaderPosition = 'above' | 'below';
   selector: 'md-tab-group, mat-tab-group',
   templateUrl: 'tab-group.html',
   styleUrls: ['tab-group.css'],
+  encapsulation: ViewEncapsulation.None,
   changeDetection: ChangeDetectionStrategy.OnPush,
+  inputs: ['color', 'disableRipple'],
   host: {
     'class': 'mat-tab-group',
     '[class.mat-tab-group-dynamic-height]': 'dynamicHeight',
     '[class.mat-tab-group-inverted-header]': 'headerPosition === "below"',
   }
 })
-export class MdTabGroup implements AfterContentInit, AfterContentChecked,
-  AfterViewChecked, OnDestroy {
+export class MdTabGroup extends _MdTabGroupMixinBase implements AfterContentInit,
+    AfterContentChecked, AfterViewChecked, OnDestroy, CanColor, CanDisableRipple {
 
   @ContentChildren(MdTab) _tabs: QueryList<MdTab>;
 
@@ -93,12 +105,6 @@ export class MdTabGroup implements AfterContentInit, AfterContentChecked,
   get _dynamicHeightDeprecated(): boolean { return this._dynamicHeight; }
   set _dynamicHeightDeprecated(value: boolean) { this._dynamicHeight = value; }
 
-  /** Whether ripples for the tab-group should be disabled or not. */
-  @Input()
-  get disableRipple(): boolean { return this._disableRipple; }
-  set disableRipple(value) { this._disableRipple = coerceBooleanProperty(value); }
-  private _disableRipple: boolean = false;
-
   /** The index of the active tab. */
   @Input()
   set selectedIndex(value: number | null) { this._indexToSelect = value; }
@@ -107,6 +113,22 @@ export class MdTabGroup implements AfterContentInit, AfterContentChecked,
 
   /** Position of the tab header. */
   @Input() headerPosition: MdTabHeaderPosition = 'above';
+
+  /** Background color of the tab group. */
+  @Input()
+  get backgroundColor(): ThemePalette { return this._backgroundColor; }
+  set backgroundColor(value: ThemePalette) {
+    let nativeElement = this._elementRef.nativeElement;
+
+    this._renderer.removeClass(nativeElement, `mat-background-${this.backgroundColor}`);
+
+    if (value) {
+      this._renderer.addClass(nativeElement, `mat-background-${value}`);
+    }
+
+    this._backgroundColor = value;
+  }
+  private _backgroundColor: ThemePalette;
 
   /** Output to enable support for two-way binding on `[(selectedIndex)]` */
   @Output() get selectedIndexChange(): Observable<number> {
@@ -121,7 +143,10 @@ export class MdTabGroup implements AfterContentInit, AfterContentChecked,
 
   private _groupId: number;
 
-  constructor(private _renderer: Renderer2, private _changeDetectorRef: ChangeDetectorRef) {
+  constructor(_renderer: Renderer2,
+              elementRef: ElementRef,
+              private _changeDetectorRef: ChangeDetectorRef) {
+    super(_renderer, elementRef);
     this._groupId = nextId++;
   }
 
@@ -147,6 +172,7 @@ export class MdTabGroup implements AfterContentInit, AfterContentChecked,
     // Setup the position for each tab and optionally setup an origin on the next selected tab.
     this._tabs.forEach((tab: MdTab, index: number) => {
       tab.position = index - indexToSelect;
+      tab.isActive = index === indexToSelect;
 
       // If there is already a selected tab, then set up an origin for the next selected tab
       // if it doesn't have one already.

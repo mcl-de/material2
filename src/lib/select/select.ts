@@ -8,53 +8,64 @@
 
 import {
   AfterContentInit,
+  Attribute,
+  ChangeDetectionStrategy,
+  ChangeDetectorRef,
   Component,
+  ContentChild,
   ContentChildren,
   ElementRef,
   EventEmitter,
+  Inject,
+  InjectionToken,
   Input,
   OnDestroy,
+  OnInit,
   Optional,
   Output,
   QueryList,
   Renderer2,
   Self,
-  ViewEncapsulation,
   ViewChild,
-  ChangeDetectorRef,
-  Attribute,
-  OnInit,
-  Inject,
-  ChangeDetectionStrategy,
-  InjectionToken,
+  ViewEncapsulation,
+  Directive,
+  isDevMode,
 } from '@angular/core';
-import {MdOption, MdOptionSelectionChange, MdOptgroup} from '../core/option/index';
-import {ENTER, SPACE, UP_ARROW, DOWN_ARROW, HOME, END} from '../core/keyboard/keycodes';
-import {FocusKeyManager} from '../core/a11y/focus-key-manager';
-import {Directionality} from '../core/bidi/index';
+import {ControlValueAccessor, FormGroupDirective, NgControl, NgForm} from '@angular/forms';
+import {DOWN_ARROW, END, ENTER, HOME, SPACE, UP_ARROW} from '@angular/cdk/keycodes';
+import {FocusKeyManager} from '@angular/cdk/a11y';
+import {Directionality} from '@angular/cdk/bidi';
+import {coerceBooleanProperty} from '@angular/cdk/coercion';
+import {filter, startWith} from '@angular/cdk/rxjs';
+import {
+  ConnectedOverlayDirective,
+  Overlay,
+  RepositionScrollStrategy,
+  // This import is only used to define a generic type. The current TypeScript version incorrectly
+  // considers such imports as unused (https://github.com/Microsoft/TypeScript/issues/14953)
+  // tslint:disable-next-line:no-unused-variable
+  ScrollStrategy,
+  ViewportRuler
+} from '@angular/cdk/overlay';
+import {merge} from 'rxjs/observable/merge';
 import {Observable} from 'rxjs/Observable';
 import {Subscription} from 'rxjs/Subscription';
-import {transformPlaceholder, transformPanel, fadeInContent} from './select-animations';
-import {ControlValueAccessor, NgControl} from '@angular/forms';
-import {coerceBooleanProperty} from '@angular/cdk';
-import {ConnectedOverlayDirective} from '../core/overlay/overlay-directives';
-import {ViewportRuler} from '../core/overlay/position/viewport-ruler';
-import {SelectionModel} from '../core/selection/selection';
-import {Overlay} from '../core/overlay/overlay';
-import {getMdSelectDynamicMultipleError, getMdSelectNonArrayValueError} from './select-errors';
-import {startWith, filter} from '../core/rxjs/index';
-import {merge} from 'rxjs/observable/merge';
+import {fadeInContent, transformPanel, transformPlaceholder} from './select-animations';
+import {SelectionModel} from '@angular/cdk/collections';
+import {
+  getMdSelectDynamicMultipleError,
+  getMdSelectNonArrayValueError,
+  getMdSelectNonFunctionValueError
+} from './select-errors';
 import {CanColor, mixinColor} from '../core/common-behaviors/color';
 import {CanDisable, mixinDisabled} from '../core/common-behaviors/disabled';
+import {MdOptgroup, MdOption, MdOptionSelectionChange} from '../core/option/index';
 import {
   FloatPlaceholderType,
-  PlaceholderOptions,
-  MD_PLACEHOLDER_GLOBAL_OPTIONS
+  MD_PLACEHOLDER_GLOBAL_OPTIONS,
+  PlaceholderOptions
 } from '../core/placeholder/placeholder-options';
-// This import is only used to define a generic type. The current TypeScript version incorrectly
-// considers such imports as unused (https://github.com/Microsoft/TypeScript/issues/14953)
-// tslint:disable-next-line:no-unused-variable
-import {ScrollStrategy, RepositionScrollStrategy} from '../core/overlay/scroll';
+import {Platform} from '@angular/cdk/platform';
 
 /**
  * The following style constants are necessary to save here in order
@@ -110,12 +121,20 @@ export const SELECT_PANEL_PADDING_Y = 16;
  */
 export const SELECT_PANEL_VIEWPORT_PADDING = 8;
 
+/**
+ * Default minimum width of the trigger based on the CSS.
+ * Used as a fallback for server-side rendering.
+ * @docs-private
+ */
+const SELECT_TRIGGER_MIN_WIDTH = 112;
+
 /** Injection token that determines the scroll handling while a select is open. */
 export const MD_SELECT_SCROLL_STRATEGY =
     new InjectionToken<() => ScrollStrategy>('md-select-scroll-strategy');
 
 /** @docs-private */
-export function MD_SELECT_SCROLL_STRATEGY_PROVIDER_FACTORY(overlay: Overlay) {
+export function MD_SELECT_SCROLL_STRATEGY_PROVIDER_FACTORY(overlay: Overlay):
+    () => RepositionScrollStrategy {
   return () => overlay.scrollStrategies.reposition();
 }
 
@@ -138,6 +157,16 @@ export class MdSelectBase {
 }
 export const _MdSelectMixinBase = mixinColor(mixinDisabled(MdSelectBase), 'primary');
 
+
+/**
+ * Allows the user to customize the trigger that is displayed when the select has a value.
+ */
+@Directive({
+  selector: 'md-select-trigger, mat-select-trigger'
+})
+export class MdSelectTrigger {}
+
+
 @Component({
   moduleId: module.id,
   selector: 'md-select, mat-select',
@@ -153,9 +182,11 @@ export const _MdSelectMixinBase = mixinColor(mixinDisabled(MdSelectBase), 'prima
     '[attr.aria-labelledby]': 'ariaLabelledby',
     '[attr.aria-required]': 'required.toString()',
     '[attr.aria-disabled]': 'disabled.toString()',
-    '[attr.aria-invalid]': '_control?.invalid || "false"',
+    '[attr.aria-invalid]': '_isErrorState()',
     '[attr.aria-owns]': '_optionIds',
+    '[attr.aria-multiselectable]': 'multiple',
     '[class.mat-select-disabled]': 'disabled',
+    '[class.mat-select-invalid]': '_isErrorState()',
     '[class.mat-select-required]': 'required',
     'class': 'mat-select',
     '(keydown)': '_handleClosedKeydown($event)',
@@ -194,6 +225,9 @@ export class MdSelect extends _MdSelectMixinBase implements AfterContentInit, On
   /** Whether the component is in multiple selection mode. */
   private _multiple: boolean = false;
 
+  /** Comparison function to specify which option is displayed. Defaults to object equality. */
+  private _compareWith = (o1: any, o2: any) => o1 === o2;
+
   /** Deals with the selection logic. */
   _selectionModel: SelectionModel<MdOption>;
 
@@ -213,7 +247,7 @@ export class MdSelect extends _MdSelectMixinBase implements AfterContentInit, On
   _triggerWidth: number;
 
   /** Manages keyboard events for options in the panel. */
-  _keyManager: FocusKeyManager;
+  _keyManager: FocusKeyManager<MdOption>;
 
   /**
    * The width of the selected option's value. Must be set programmatically
@@ -282,6 +316,9 @@ export class MdSelect extends _MdSelectMixinBase implements AfterContentInit, On
   /** Classes to be passed to the select panel. Supports the same syntax as `ngClass`. */
   @Input() panelClass: string|string[]|Set<string>|{[key: string]: any};
 
+  /** User-supplied override of the trigger element. */
+  @ContentChild(MdSelectTrigger) customTrigger: MdSelectTrigger;
+
   /** Placeholder to be shown if no value has been selected. */
   @Input()
   get placeholder() { return this._placeholder; }
@@ -308,6 +345,24 @@ export class MdSelect extends _MdSelectMixinBase implements AfterContentInit, On
     this._multiple = coerceBooleanProperty(value);
   }
 
+  /**
+   * A function to compare the option values with the selected values. The first argument
+   * is a value from an option. The second is a value from the selection. A boolean
+   * should be returned.
+   */
+  @Input()
+  get compareWith() { return this._compareWith; }
+  set compareWith(fn: (o1: any, o2: any) => boolean) {
+    if (typeof fn !== 'function') {
+      throw getMdSelectNonFunctionValueError();
+    }
+    this._compareWith = fn;
+    if (this._selectionModel) {
+      // A different comparator means the selection could change.
+      this._initializeSelection();
+    }
+  }
+
   /** Whether to float the placeholder text. */
   @Input()
   get floatPlaceholder(): FloatPlaceholderType { return this._floatPlaceholder; }
@@ -324,6 +379,24 @@ export class MdSelect extends _MdSelectMixinBase implements AfterContentInit, On
       this._tabIndex = value;
     }
   }
+
+  /** Value of the select control. */
+  @Input()
+  get value() { return this._value; }
+  set value(newValue: any) {
+    this.writeValue(newValue);
+    this._value = newValue;
+  }
+  private _value: any;
+
+  /** Whether ripples for all options in the select are disabled. */
+  @Input()
+  get disableRipple(): boolean { return this._disableRipple; }
+  set disableRipple(value: boolean) {
+    this._disableRipple = coerceBooleanProperty(value);
+    this._setOptionDisableRipple();
+  }
+  private _disableRipple: boolean = false;
 
   /** Aria label of the select. If not specified, the placeholder will be used as label. */
   @Input('aria-label') ariaLabel: string = '';
@@ -345,17 +418,28 @@ export class MdSelect extends _MdSelectMixinBase implements AfterContentInit, On
   /** Event emitted when the selected value has been changed by the user. */
   @Output() change: EventEmitter<MdSelectChange> = new EventEmitter<MdSelectChange>();
 
+  /**
+   * Event that emits whenever the raw value of the select changes. This is here primarily
+   * to facilitate the two-way binding for the `value` input.
+   * @docs-private
+   */
+  @Output() valueChange = new EventEmitter<any>();
+
   constructor(
     private _viewportRuler: ViewportRuler,
     private _changeDetectorRef: ChangeDetectorRef,
     private _overlay: Overlay,
+    private _platform: Platform,
     renderer: Renderer2,
     elementRef: ElementRef,
     @Optional() private _dir: Directionality,
+    @Optional() private _parentForm: NgForm,
+    @Optional() private _parentFormGroup: FormGroupDirective,
     @Self() @Optional() public _control: NgControl,
     @Attribute('tabindex') tabIndex: string,
     @Optional() @Inject(MD_PLACEHOLDER_GLOBAL_OPTIONS) placeholderOptions: PlaceholderOptions,
     @Inject(MD_SELECT_SCROLL_STRATEGY) private _scrollStrategyFactory) {
+
     super(renderer, elementRef);
 
     if (this._control) {
@@ -376,12 +460,7 @@ export class MdSelect extends _MdSelectMixinBase implements AfterContentInit, On
 
     this._changeSubscription = startWith.call(this.options.changes, null).subscribe(() => {
       this._resetOptions();
-
-      if (this._control) {
-        // Defer setting the value in order to avoid the "Expression
-        // has changed after it was checked" errors from Angular.
-        Promise.resolve(null).then(() => this._setSelectionByValue(this._control.value));
-      }
+      this._initializeSelection();
     });
   }
 
@@ -489,8 +568,12 @@ export class MdSelect extends _MdSelectMixinBase implements AfterContentInit, On
 
   /** The value displayed in the trigger. */
   get triggerValue(): string {
+    if (!this._selectionModel || this._selectionModel.isEmpty()) {
+      return '';
+    }
+
     if (this._multiple) {
-      let selectedOptions = this._selectionModel.selected.map(option => option.viewValue);
+      const selectedOptions = this._selectionModel.selected.map(option => option.viewValue);
 
       if (this._isRtl()) {
         selectedOptions.reverse();
@@ -513,7 +596,9 @@ export class MdSelect extends _MdSelectMixinBase implements AfterContentInit, On
    * the overlay width to the trigger width.
    */
   private _setTriggerWidth(): void {
-    this._triggerWidth = this._getTriggerRect().width;
+    this._triggerWidth = this._platform.isBrowser ? this._getTriggerRect().width :
+        SELECT_TRIGGER_MIN_WIDTH;
+
     this._changeDetectorRef.markForCheck();
   }
 
@@ -589,6 +674,16 @@ export class MdSelect extends _MdSelectMixinBase implements AfterContentInit, On
     return this._selectionModel && this._selectionModel.hasValue();
   }
 
+  /** Whether the select is in an error state. */
+  _isErrorState(): boolean {
+    const isInvalid = this._control && this._control.invalid;
+    const isTouched = this._control && this._control.touched;
+    const isSubmitted = (this._parentFormGroup && this._parentFormGroup.submitted) ||
+        (this._parentForm && this._parentForm.submitted);
+
+    return !!(isInvalid && (isTouched || isSubmitted));
+  }
+
   /**
    * Sets the scroll position of the scroll container. This must be called after
    * the overlay pane is attached or the scroll container element will not yet be
@@ -598,6 +693,14 @@ export class MdSelect extends _MdSelectMixinBase implements AfterContentInit, On
     const scrollContainer =
         this.overlayDir.overlayRef.overlayElement.querySelector('.mat-select-panel');
     scrollContainer!.scrollTop = this._scrollTop;
+  }
+
+  private _initializeSelection(): void {
+    // Defer setting the value in order to avoid the "Expression
+    // has changed after it was checked" errors from Angular.
+    Promise.resolve().then(() => {
+      this._setSelectionByValue(this._control ? this._control.value : this._value);
+    });
   }
 
   /**
@@ -617,7 +720,13 @@ export class MdSelect extends _MdSelectMixinBase implements AfterContentInit, On
       value.forEach((currentValue: any) => this._selectValue(currentValue, isUserInput));
       this._sortValues();
     } else {
-      this._selectValue(value, isUserInput);
+      const correspondingOption = this._selectValue(value, isUserInput);
+
+      // Shift focus to the active item. Note that we shouldn't do this in multiple
+      // mode, because we don't know what option the user interacted with last.
+      if (correspondingOption) {
+        this._keyManager.setActiveItem(this.options.toArray().indexOf(correspondingOption));
+      }
     }
 
     this._setValueWidth();
@@ -634,19 +743,27 @@ export class MdSelect extends _MdSelectMixinBase implements AfterContentInit, On
    * @returns Option that has the corresponding value.
    */
   private _selectValue(value: any, isUserInput = false): MdOption | undefined {
-    let optionsArray = this.options.toArray();
-    let correspondingOption = optionsArray.find(option => {
-      return option.value != null && option.value === value;
+    const correspondingOption = this.options.find((option: MdOption) => {
+      try {
+        // Treat null as a special reset value.
+        return option.value != null && this._compareWith(option.value,  value);
+      } catch (error) {
+        if (isDevMode()) {
+          // Notify developers of errors in their comparator.
+          console.warn(error);
+        }
+        return false;
+      }
     });
 
     if (correspondingOption) {
       isUserInput ? correspondingOption._selectViaInteraction() : correspondingOption.select();
       this._selectionModel.select(correspondingOption);
-      this._keyManager.setActiveItem(optionsArray.indexOf(correspondingOption));
     }
 
     return correspondingOption;
   }
+
 
   /**
    * Clears the select trigger and deselects every option in the list.
@@ -667,7 +784,7 @@ export class MdSelect extends _MdSelectMixinBase implements AfterContentInit, On
 
   /** Sets up a key manager to listen to keyboard events on the overlay panel. */
   private _initKeyManager() {
-    this._keyManager = new FocusKeyManager(this.options);
+    this._keyManager = new FocusKeyManager<MdOption>(this.options).withTypeAhead();
     this._tabSubscription = this._keyManager.tabOut.subscribe(() => this.close());
   }
 
@@ -677,6 +794,7 @@ export class MdSelect extends _MdSelectMixinBase implements AfterContentInit, On
     this._listenToOptions();
     this._setOptionIds();
     this._setOptionMultiple();
+    this._setOptionDisableRipple();
   }
 
   /** Listens to user-generated selection events on each option. */
@@ -750,8 +868,10 @@ export class MdSelect extends _MdSelectMixinBase implements AfterContentInit, On
       valueToEmit = this.selected ? this.selected.value : fallbackValue;
     }
 
+    this._value = valueToEmit;
     this._onChange(valueToEmit);
     this.change.emit(new MdSelectChange(this, valueToEmit));
+    this.valueChange.emit(valueToEmit);
   }
 
   /** Records option IDs to pass to the aria-owns property. */
@@ -771,6 +891,12 @@ export class MdSelect extends _MdSelectMixinBase implements AfterContentInit, On
     }
   }
 
+  /** Sets the `disableRipple` property on each option. */
+  private _setOptionDisableRipple() {
+    if (this.options) {
+      this.options.forEach(option => option.disableRipple = this.disableRipple);
+    }
+  }
   /**
    * Must set the width of the selected option's value programmatically
    * because it is absolutely positioned and otherwise will not clip
@@ -817,7 +943,8 @@ export class MdSelect extends _MdSelectMixinBase implements AfterContentInit, On
     if (this._hasValue()) {
       let selectedOptionOffset = this._getOptionIndex(this._selectionModel.selected[0])!;
 
-      selectedOptionOffset += this._getLabelCountBeforeOption(selectedOptionOffset);
+      selectedOptionOffset += MdOption.countGroupLabelsBeforeOption(selectedOptionOffset,
+          this.options, this.optionGroups);
 
       // We must maintain a scroll buffer so the selected option will be scrolled to the
       // center of the overlay panel rather than the top.
@@ -829,8 +956,10 @@ export class MdSelect extends _MdSelectMixinBase implements AfterContentInit, On
       // we must only adjust for the height difference between the option element
       // and the trigger element, then multiply it by -1 to ensure the panel moves
       // in the correct direction up the page.
+      let groupLabels = MdOption.countGroupLabelsBeforeOption(0, this.options, this.optionGroups);
+
       this._offsetY = (SELECT_ITEM_HEIGHT - SELECT_TRIGGER_HEIGHT) / 2 * -1 -
-          (this._getLabelCountBeforeOption(0) * SELECT_ITEM_HEIGHT);
+          (groupLabels * SELECT_ITEM_HEIGHT);
     }
 
     this._checkOverlayWithinViewport(maxScroll);
@@ -1075,30 +1204,6 @@ export class MdSelect extends _MdSelectMixinBase implements AfterContentInit, On
   private _getItemCount(): number {
     return this.options.length + this.optionGroups.length;
   }
-
-  /**
-   * Calculates the amount of option group labels that precede the specified option.
-   * Useful when positioning the panel, because the labels will offset the index of the
-   * currently-selected option.
-   */
-  private _getLabelCountBeforeOption(optionIndex: number): number {
-    if (this.optionGroups.length) {
-      let options = this.options.toArray();
-      let groups = this.optionGroups.toArray();
-      let groupCounter = 0;
-
-      for (let i = 0; i < optionIndex + 1; i++) {
-        if (options[i].group && options[i].group === groups[groupCounter]) {
-          groupCounter++;
-        }
-      }
-
-      return groupCounter;
-    }
-
-    return 0;
-  }
-
 }
 
 /** Clamps a value n between min and max values. */

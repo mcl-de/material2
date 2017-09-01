@@ -2,6 +2,11 @@ import {task} from 'gulp';
 import {execNodeTask} from '../util/task_helpers';
 import {join} from 'path';
 import {buildConfig} from 'material2-build-tools';
+import {red} from 'chalk';
+
+// These types lack of type definitions
+const madge = require('madge');
+const resolveBin = require('resolve-bin');
 
 /** Glob that matches all SCSS or CSS files that should be linted. */
 const stylesGlob = '+(tools|src)/**/!(*.bundle).+(css|scss)';
@@ -17,18 +22,42 @@ const cdkOutPath = join(buildConfig.outputDir, 'packages', 'cdk');
 
 task('lint', ['tslint', 'stylelint', 'madge']);
 
-/** Task that runs madge to detect circular dependencies. */
-task('madge', ['material:clean-build'], execNodeTask(
-  'madge', ['--circular', materialOutPath, cdkOutPath])
-);
-
 /** Task to lint Angular Material's scss stylesheets. */
 task('stylelint', execNodeTask(
   'stylelint', [stylesGlob, '--config', 'stylelint-config.json', '--syntax', 'scss']
 ));
 
 /** Task to run TSLint against the e2e/ and src/ directories. */
-task('tslint', execNodeTask('tslint', tsLintBaseFlags));
+task('tslint', execTsLintTask());
 
 /** Task that automatically fixes TSLint warnings. */
-task('tslint:fix', execNodeTask('tslint', [...tsLintBaseFlags, '--fix']));
+task('tslint:fix', execTsLintTask('--fix'));
+
+/** Task that runs madge to detect circular dependencies. */
+task('madge', ['material:clean-build'], () => {
+  madge([materialOutPath, cdkOutPath]).then((res: any) => {
+    const circularModules = res.circular();
+
+    if (circularModules.length) {
+      console.error();
+      console.error(red(`Madge found modules with circular dependencies.`));
+      console.error(formatMadgeCircularModules(circularModules));
+      console.error();
+    }
+  });
+});
+
+/** Returns a string that formats the graph of circular modules. */
+function formatMadgeCircularModules(circularModules: string[][]): string {
+  return circularModules.map((modulePaths: string[]) => `\n - ${modulePaths.join(' > ')}`).join('');
+}
+
+/** Creates a gulp task function that will run TSLint together with ts-node. */
+function execTsLintTask(...flags: string[]) {
+  const tslintBinPath = resolveBin.sync('tslint');
+  const tsNodeOptions = ['-O', '{"module": "commonjs"}'];
+
+  // TS-Node needs the module compiler option to be set to `commonjs` because the transpiled
+  // TypeScript files will be running inside of NodeJS.
+  return execNodeTask('ts-node', [...tsNodeOptions, tslintBinPath, ...tsLintBaseFlags, ...flags]);
+}

@@ -10,19 +10,23 @@ import {MdSelectChange} from '@angular/material';
 })
 export class SelectDemo {
   drinksRequired = false;
+  drinkObjectRequired = false;
   pokemonRequired = false;
   drinksDisabled = false;
   pokemonDisabled = false;
   showSelect = false;
   currentDrink: string;
+  currentDrinkObject: {}|undefined = {value: 'tea-5', viewValue: 'Tea'};
   currentPokemon: string[];
   currentPokemonFromGroup: string;
+  currentDigimon: string;
   latestChangeEvent: MdSelectChange;
   floatPlaceholder: string = 'auto';
   foodControl = new FormControl('pizza-1');
   topHeightCtrl = new FormControl(0);
   drinksTheme = 'primary';
   pokemonTheme = 'primary';
+  compareByValue = true;
 
   foods = [
     {value: null, viewValue: 'None'},
@@ -94,11 +98,32 @@ export class SelectDemo {
     }
   ];
 
+  digimon = [
+    { value: 'mihiramon-0', viewValue: 'Mihiramon' },
+    { value: 'sandiramon-1', viewValue: 'Sandiramon' },
+    { value: 'sinduramon-2', viewValue: 'Sinduramon' },
+    { value: 'pajiramon-3', viewValue: 'Pajiramon' },
+    { value: 'vajiramon-4', viewValue: 'Vajiramon' },
+    { value: 'indramon-5', viewValue: 'Indramon' }
+  ];
+
   toggleDisabled() {
     this.foodControl.enabled ? this.foodControl.disable() : this.foodControl.enable();
   }
 
   setPokemonValue() {
     this.currentPokemon = ['eevee-4', 'psyduck-6'];
+  }
+
+  reassignDrinkByCopy() {
+    this.currentDrinkObject = {...this.currentDrinkObject};
+  }
+
+  compareDrinkObjectsByValue(d1: {value: string}, d2: {value: string}) {
+    return d1 && d2 && d1.value === d2.value;
+  }
+
+  compareByReference(o1: any, o2: any) {
+    return o1 === o2;
   }
 }

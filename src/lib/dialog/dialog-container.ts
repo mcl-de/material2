@@ -9,26 +9,27 @@
 import {
   Component,
   ComponentRef,
-  ViewChild,
-  ViewEncapsulation,
-  NgZone,
   ElementRef,
+  EmbeddedViewRef,
   EventEmitter,
   Inject,
+  NgZone,
   Optional,
+  ChangeDetectorRef,
+  ViewChild,
+  ViewEncapsulation,
 } from '@angular/core';
-import {
-  animate,
-  trigger,
-  state,
-  style,
-  transition,
-  AnimationEvent,
-} from '@angular/animations';
+import {animate, AnimationEvent, state, style, transition, trigger} from '@angular/animations';
 import {DOCUMENT} from '@angular/platform-browser';
-import {BasePortalHost, ComponentPortal, PortalHostDirective, TemplatePortal} from '../core';
+import {
+  BasePortalHost,
+  ComponentPortal,
+  PortalHostDirective,
+  TemplatePortal
+} from '@angular/cdk/portal';
+import {FocusTrap, FocusTrapFactory} from '@angular/cdk/a11y';
 import {MdDialogConfig} from './dialog-config';
-import {FocusTrapFactory, FocusTrap} from '../core/a11y/focus-trap';
+
 
 /**
  * Throws an exception for the case when a ComponentPortal is
@@ -64,10 +65,12 @@ export function throwMdDialogContentAlreadyAttachedError() {
   ],
   host: {
     'class': 'mat-dialog-container',
+    'tabindex': '-1',
     '[attr.role]': '_config?.role',
     '[attr.aria-labelledby]': '_ariaLabelledBy',
     '[attr.aria-describedby]': '_config?.ariaDescribedBy || null',
     '[@slideDialog]': '_state',
+    '(@slideDialog.start)': '_onAnimationStart($event)',
     '(@slideDialog.done)': '_onAnimationDone($event)',
   },
 })
@@ -81,29 +84,29 @@ export class MdDialogContainer extends BasePortalHost {
   /** Element that was focused before the dialog was opened. Save this to restore upon close. */
   private _elementFocusedBeforeDialogWasOpened: HTMLElement | null = null;
 
-  /** Reference to the global document object. */
-  private _document: Document;
-
   /** The dialog configuration. */
   _config: MdDialogConfig;
 
   /** State of the dialog animation. */
   _state: 'void' | 'enter' | 'exit' = 'enter';
 
-  /** Emits the current animation state whenever it changes. */
-  _onAnimationStateChange = new EventEmitter<AnimationEvent>();
+  /** Emits when an animation state changes. */
+  _animationStateChanged = new EventEmitter<AnimationEvent>();
 
   /** ID of the element that should be considered as the dialog's label. */
   _ariaLabelledBy: string | null = null;
+
+  /** Whether the container is currently mid-animation. */
+  _isAnimating = false;
 
   constructor(
     private _ngZone: NgZone,
     private _elementRef: ElementRef,
     private _focusTrapFactory: FocusTrapFactory,
-    @Optional() @Inject(DOCUMENT) _document: any) {
+    private _changeDetectorRef: ChangeDetectorRef,
+    @Optional() @Inject(DOCUMENT) private _document: any) {
 
     super();
-    this._document = _document;
   }
 
   /**
@@ -123,7 +126,7 @@ export class MdDialogContainer extends BasePortalHost {
    * Attach a TemplatePortal as content to this dialog container.
    * @param portal Portal to be attached as the dialog content.
    */
-  attachTemplatePortal(portal: TemplatePortal): Map<string, any> {
+  attachTemplatePortal<C>(portal: TemplatePortal<C>): EmbeddedViewRef<C> {
     if (this._portalHost.hasAttached()) {
       throwMdDialogContentAlreadyAttachedError();
     }
@@ -141,7 +144,13 @@ export class MdDialogContainer extends BasePortalHost {
     // If were to attempt to focus immediately, then the content of the dialog would not yet be
     // ready in instances where change detection has to run first. To deal with this, we simply
     // wait for the microtask queue to be empty.
-    this._focusTrap.focusInitialElementWhenReady();
+    this._focusTrap.focusInitialElementWhenReady().then(hasMovedFocus => {
+      // If we didn't find any focusable elements inside the dialog, focus the
+      // container so the user can't tab into other elements behind it.
+      if (!hasMovedFocus) {
+        this._elementRef.nativeElement.focus();
+      }
+    });
   }
 
   /** Restores focus to the element that was focused before the dialog opened. */
@@ -149,7 +158,7 @@ export class MdDialogContainer extends BasePortalHost {
     const toFocus = this._elementFocusedBeforeDialogWasOpened;
 
     // We need the extra check, because IE can set the `activeElement` to null in some cases.
-    if (toFocus && 'focus' in toFocus) {
+    if (toFocus && typeof toFocus.focus === 'function') {
       toFocus.focus();
     }
 
@@ -167,13 +176,28 @@ export class MdDialogContainer extends BasePortalHost {
 
   /** Callback, invoked whenever an animation on the host completes. */
   _onAnimationDone(event: AnimationEvent) {
-    this._onAnimationStateChange.emit(event);
-
     if (event.toState === 'enter') {
       this._trapFocus();
     } else if (event.toState === 'exit') {
       this._restoreFocus();
-      this._onAnimationStateChange.complete();
     }
+
+    this._animationStateChanged.emit(event);
+    this._isAnimating = false;
+  }
+
+  /** Callback, invoked when an animation on the host starts. */
+  _onAnimationStart(event: AnimationEvent) {
+    this._isAnimating = true;
+    this._animationStateChanged.emit(event);
+  }
+
+  /** Starts the dialog exit animation. */
+  _startExitAnimation(): void {
+    this._state = 'exit';
+
+    // Mark the container for check so it can react if the
+    // view container is using OnPush change detection.
+    this._changeDetectorRef.markForCheck();
   }
 }

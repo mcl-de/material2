@@ -3,7 +3,7 @@ sudo: false
 dist: trusty
 
 node_js:
-  - '--lts'
+  - '8'
 
 addons:
   jwt:
@@ -42,8 +42,7 @@ env:
   - BROWSER_PROVIDER_ERROR_FILE=/tmp/angular-material2-build/errorfile
 
 before_install:
-  - source ./scripts/ci/env.sh
-  - npm i -g npm@^5.0.1
+  - source ./scripts/ci/travis-env.sh
 
 install:
   - npm install
@@ -56,4 +55,4 @@ script:
 
 cache:
   directories:
-    - $HOME/.npm
+    - ./node_modules/
