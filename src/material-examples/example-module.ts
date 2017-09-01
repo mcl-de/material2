@@ -13,7 +13,10 @@ export interface LiveExample {
   selectorName?: string;
 }
 
+import {AutocompleteDisplayExample} from './autocomplete-display/autocomplete-display-example';
+import {AutocompleteFilterExample} from './autocomplete-filter/autocomplete-filter-example';
 import {AutocompleteOverviewExample} from './autocomplete-overview/autocomplete-overview-example';
+import {AutocompleteSimpleExample} from './autocomplete-simple/autocomplete-simple-example';
 import {ButtonOverviewExample} from './button-overview/button-overview-example';
 import {ButtonToggleExclusiveExample} from './button-toggle-exclusive/button-toggle-exclusive-example';
 import {ButtonToggleOverviewExample} from './button-toggle-overview/button-toggle-overview-example';
@@ -35,6 +38,8 @@ import {DialogContentExampleDialog,DialogContentExample} from './dialog-content/
 import {DialogDataExampleDialog,DialogDataExample} from './dialog-data/dialog-data-example';
 import {DialogElementsExampleDialog,DialogElementsExample} from './dialog-elements/dialog-elements-example';
 import {DialogOverviewExampleDialog,DialogOverviewExample} from './dialog-overview/dialog-overview-example';
+import {ExpansionOverviewExample} from './expansion-overview/expansion-overview-example';
+import {ExpansionStepsExample} from './expansion-steps/expansion-steps-example';
 import {GridListDynamicExample} from './grid-list-dynamic/grid-list-dynamic-example';
 import {GridListOverviewExample} from './grid-list-overview/grid-list-overview-example';
 import {IconOverviewExample} from './icon-overview/icon-overview-example';
@@ -71,6 +76,7 @@ import {SnackBarOverviewExample} from './snack-bar-overview/snack-bar-overview-e
 import {SortOverviewExample} from './sort-overview/sort-overview-example';
 import {TableBasicExample} from './table-basic/table-basic-example';
 import {TableFilteringExample} from './table-filtering/table-filtering-example';
+import {TableHttpExample} from './table-http/table-http-example';
 import {TableOverviewExample} from './table-overview/table-overview-example';
 import {TablePaginationExample} from './table-pagination/table-pagination-example';
 import {TableSortingExample} from './table-sorting/table-sorting-example';
@@ -82,9 +88,27 @@ import {TooltipOverviewExample} from './tooltip-overview/tooltip-overview-exampl
 import {TooltipPositionExample} from './tooltip-position/tooltip-position-example';
 
 export const EXAMPLE_COMPONENTS = {
+  'autocomplete-display': {
+    title: 'Display value autocomplete',
+    component: AutocompleteDisplayExample,
+    additionalFiles: null,
+    selectorName: null
+  },
+  'autocomplete-filter': {
+    title: 'Filter autocomplete',
+    component: AutocompleteFilterExample,
+    additionalFiles: null,
+    selectorName: null
+  },
   'autocomplete-overview': {
-    title: 'Basic autocomplete',
+    title: 'Autocomplete overview',
     component: AutocompleteOverviewExample,
+    additionalFiles: null,
+    selectorName: null
+  },
+  'autocomplete-simple': {
+    title: 'Simple autocomplete',
+    component: AutocompleteSimpleExample,
     additionalFiles: null,
     selectorName: null
   },
@@ -213,6 +237,18 @@ export const EXAMPLE_COMPONENTS = {
     component: DialogOverviewExample,
     additionalFiles: ["dialog-overview-example-dialog.html"],
     selectorName: 'DialogOverviewExample, DialogOverviewExampleDialog'
+  },
+  'expansion-overview': {
+    title: 'Basic expansion panel',
+    component: ExpansionOverviewExample,
+    additionalFiles: null,
+    selectorName: null
+  },
+  'expansion-steps': {
+    title: 'Expansion panel as accordion',
+    component: ExpansionStepsExample,
+    additionalFiles: null,
+    selectorName: null
   },
   'grid-list-dynamic': {
     title: 'Dynamic grid-list',
@@ -430,6 +466,12 @@ export const EXAMPLE_COMPONENTS = {
     additionalFiles: null,
     selectorName: null
   },
+  'table-http': {
+    title: 'Table retrieving data through HTTP',
+    component: TableHttpExample,
+    additionalFiles: null,
+    selectorName: null
+  },
   'table-overview': {
     title: 'Feature-rich data table',
     component: TableOverviewExample,
@@ -487,7 +529,10 @@ export const EXAMPLE_COMPONENTS = {
 };
 
 export const EXAMPLE_LIST = [
+  AutocompleteDisplayExample,
+  AutocompleteFilterExample,
   AutocompleteOverviewExample,
+  AutocompleteSimpleExample,
   ButtonOverviewExample,
   ButtonToggleExclusiveExample,
   ButtonToggleOverviewExample,
@@ -509,6 +554,8 @@ export const EXAMPLE_LIST = [
   DialogDataExampleDialog,DialogDataExample,
   DialogElementsExampleDialog,DialogElementsExample,
   DialogOverviewExampleDialog,DialogOverviewExample,
+  ExpansionOverviewExample,
+  ExpansionStepsExample,
   GridListDynamicExample,
   GridListOverviewExample,
   IconOverviewExample,
@@ -545,6 +592,7 @@ export const EXAMPLE_LIST = [
   SortOverviewExample,
   TableBasicExample,
   TableFilteringExample,
+  TableHttpExample,
   TableOverviewExample,
   TablePaginationExample,
   TableSortingExample,

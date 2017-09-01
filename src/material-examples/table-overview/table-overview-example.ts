@@ -1,6 +1,7 @@
 import {Component, ElementRef, ViewChild} from '@angular/core';
-import {DataSource} from '@angular/cdk';
-import {MdPaginator, MdSort, SelectionModel} from '@angular/material';
+import {DataSource} from '@angular/cdk/collections';
+import {MdPaginator, MdSort} from '@angular/material';
+import {SelectionModel} from '@angular/cdk/collections';
 import {BehaviorSubject} from 'rxjs/BehaviorSubject';
 import {Observable} from 'rxjs/Observable';
 import 'rxjs/add/operator/startWith';
@@ -129,6 +130,9 @@ export class ExampleDataSource extends DataSource<any> {
               private _paginator: MdPaginator,
               private _sort: MdSort) {
     super();
+
+    // Reset to the first page when the user changes the filter.
+    this._filterChange.subscribe(() => this._paginator.pageIndex = 0);
   }
 
   /** Connect function called by the table to retrieve one stream containing the data to render. */

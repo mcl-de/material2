@@ -25,19 +25,19 @@ An optional datepicker toggle button is available. A toggle can be added to the 
 
 ```html
 <input [mdDatepicker]="myDatepicker">
-<button [mdDatepickerToggle]="myDatepicker"></button>
+<md-datepicker-toggle [for]="myDatepicker"></md-datepicker-toggle>
 <md-datepicker #myDatepicker></md-datepicker>
 ```
 
-This works exactly the same with an input that is part of an `<md-input-container>` and the toggle
+This works exactly the same with an input that is part of an `<md-form-field>` and the toggle
 can easily be used as a prefix or suffix on the material input:
 
 ```html
-<md-input-container>
+<md-form-field>
   <input mdInput [mdDatepicker]="myDatepicker">
-  <button mdSuffix [mdDatepickerToggle]="myDatepicker"></button>
-</md-input-container>
-<md-datepicker #myDatepicker></md-datepicker>
+  <md-datepicker-toggle mdSuffix [for]="myDatepicker"></md-datepicker-toggle>
+  <md-datepicker #myDatepicker></md-datepicker>
+</md-form-field>
 ```
 
 ### Setting the calendar starting view
@@ -82,6 +82,17 @@ Each validation property has a different error that can be checked:
  * A value that violates the `min` property will have a `mdDatepickerMin` error.
  * A value that violates the `max` property will have a `mdDatepickerMax` error.
  * A value that violates the `mdDatepickerFilter` property will have a `mdDatepickerFilter` error.
+ 
+### Input and change events
+The input's native `input` and `change` events will only trigger due to user interaction with the
+input element; they will not fire when the user selects a date from the calendar popup. Because of
+this limitation, the datepicker input also has support for `dateInput` and `dateChange` events.
+These trigger when the user interacts with either the input or the popup.
+  
+```html
+<input [mdDatepicker]="d" (dateInput)="onInput($event)" (dateChange)="onChange($event)">
+<md-datepicker #d></md-datepicker>
+```
 
 ### Touch UI mode
 The datepicker normally opens as a popup under the input. However this is not ideal for touch
@@ -115,6 +126,22 @@ By default the datepicker will use the locale code from the `LOCALE_ID` injectio
   ],
 })
 export class MyApp {}
+```
+
+It's also possible to set the locale at runtime using the `setLocale` method of the `DateAdapter`.
+
+```ts
+import { DateAdapter, NativeDateAdapter } from '@angular/material';
+
+@Component({
+  selector:    'foo',
+  template: ''
+})
+export class FooComponent {
+  constructor(dateAdapter: DateAdapter<NativeDateAdapter>) {
+    dateAdapter.setLocale('de-DE');
+  }
+}
 ```
 
 #### Choosing a date implementation and date format settings

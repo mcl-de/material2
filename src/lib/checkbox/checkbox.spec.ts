@@ -1,18 +1,17 @@
 import {
   async,
+  ComponentFixture,
   fakeAsync,
   flushMicrotasks,
-  ComponentFixture,
   TestBed,
   tick,
 } from '@angular/core/testing';
-import {NgModel, FormsModule, ReactiveFormsModule, FormControl} from '@angular/forms';
+import {FormControl, FormsModule, NgModel, ReactiveFormsModule} from '@angular/forms';
 import {Component, DebugElement} from '@angular/core';
 import {By} from '@angular/platform-browser';
+import {ViewportRuler} from '@angular/cdk/scrolling';
+import {dispatchFakeEvent, FakeViewportRuler} from '@angular/cdk/testing';
 import {MdCheckbox, MdCheckboxChange, MdCheckboxModule} from './index';
-import {ViewportRuler} from '../core/overlay/position/viewport-ruler';
-import {FakeViewportRuler} from '../core/overlay/position/fake-viewport-ruler';
-import {dispatchFakeEvent} from '@angular/cdk/testing';
 import {RIPPLE_FADE_IN_DURATION, RIPPLE_FADE_OUT_DURATION} from '../core/ripple/ripple-renderer';
 
 
@@ -26,6 +25,7 @@ describe('MdCheckbox', () => {
         SingleCheckbox,
         CheckboxWithFormDirectives,
         MultipleCheckboxes,
+        CheckboxWithNgModel,
         CheckboxWithTabIndex,
         CheckboxWithAriaLabel,
         CheckboxWithAriaLabelledby,
@@ -403,6 +403,10 @@ describe('MdCheckbox', () => {
           .toBe(0, 'Expected no ripple after element is blurred.');
     }));
 
+    it('should remove the SVG checkmark from the tab order', () => {
+      expect(checkboxNativeElement.querySelector('svg')!.getAttribute('focusable')).toBe('false');
+    });
+
     describe('ripple elements', () => {
 
       it('should show ripples on label mousedown', () => {
@@ -735,6 +739,41 @@ describe('MdCheckbox', () => {
     });
   });
 
+  describe('with required ngModel', () => {
+    let checkboxInstance: MdCheckbox;
+    let inputElement: HTMLInputElement;
+    let testComponent: CheckboxWithNgModel;
+
+    beforeEach(() => {
+      fixture = TestBed.createComponent(CheckboxWithNgModel);
+      fixture.detectChanges();
+
+      let checkboxDebugElement = fixture.debugElement.query(By.directive(MdCheckbox));
+      let checkboxNativeElement = checkboxDebugElement.nativeElement;
+      testComponent = fixture.debugElement.componentInstance;
+      checkboxInstance = checkboxDebugElement.componentInstance;
+      inputElement = <HTMLInputElement>checkboxNativeElement.querySelector('input');
+    });
+
+    it('should validate with RequiredTrue validator', () => {
+      let checkboxElement = fixture.debugElement.query(By.directive(MdCheckbox));
+      let ngModel = checkboxElement.injector.get<NgModel>(NgModel);
+
+      testComponent.isRequired = true;
+      inputElement.click();
+      fixture.detectChanges();
+
+      expect(checkboxInstance.checked).toBe(true);
+      expect(ngModel.valid).toBe(true);
+
+      inputElement.click();
+      fixture.detectChanges();
+
+      expect(checkboxInstance.checked).toBe(false);
+      expect(ngModel.valid).toBe(false);
+    });
+  });
+
   describe('with name attribute', () => {
     beforeEach(() => {
       fixture = TestBed.createComponent(CheckboxWithNameAttribute);
@@ -874,7 +913,7 @@ class SingleCheckbox {
   onCheckboxChange: (event?: MdCheckboxChange) => void = () => {};
 }
 
-/** Simple component for testing an MdCheckbox with ngModel. */
+/** Simple component for testing an MdCheckbox with ngModel in a form. */
 @Component({
   template: `
     <form>
@@ -884,6 +923,15 @@ class SingleCheckbox {
 })
 class CheckboxWithFormDirectives {
   isGood: boolean = false;
+}
+
+/** Simple component for testing an MdCheckbox with required ngModel. */
+@Component({
+  template: `<md-checkbox [required]="isRequired" [(ngModel)]="isGood">Be good</md-checkbox>`,
+})
+class CheckboxWithNgModel {
+  isGood: boolean = false;
+  isRequired: boolean = true;
 }
 
 /** Simple test component with multiple checkboxes. */

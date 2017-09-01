@@ -25,7 +25,6 @@ import {coerceToNumber} from './grid-list-measure';
   moduleId: module.id,
   selector: 'md-grid-tile, mat-grid-tile',
   host: {
-    'role': 'listitem',
     'class': 'mat-grid-tile',
   },
   templateUrl: 'grid-tile.html',
@@ -63,6 +62,7 @@ export class MdGridTile {
   selector: 'md-grid-tile-header, mat-grid-tile-header, md-grid-tile-footer, mat-grid-tile-footer',
   templateUrl: 'grid-tile-text.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
+  encapsulation: ViewEncapsulation.None,
 })
 export class MdGridTileText implements AfterContentInit {
   /**

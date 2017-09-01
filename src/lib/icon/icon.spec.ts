@@ -47,6 +47,7 @@ describe('MdIcon', () => {
         IconWithCustomFontCss,
         IconFromSvgName,
         IconWithAriaHiddenFalse,
+        IconWithBindingAndNgIf,
       ],
       providers: [
         MockBackend,
@@ -313,6 +314,42 @@ describe('MdIcon', () => {
       verifyPathChildElement(svgElement, 'left');
       expect(svgElement.getAttribute('viewBox')).toBeFalsy();
     });
+
+    it('should not throw when toggling an icon that has a binding in IE11', () => {
+      mdIconRegistry.addSvgIcon('fluffy', trust('cat.svg'));
+
+      const fixture = TestBed.createComponent(IconWithBindingAndNgIf);
+
+      fixture.detectChanges();
+
+      expect(() => {
+        fixture.componentInstance.showIcon = false;
+        fixture.detectChanges();
+
+        fixture.componentInstance.showIcon = true;
+        fixture.detectChanges();
+      }).not.toThrow();
+    });
+
+    it('should remove the SVG element from the DOM when the binding is cleared', () => {
+      mdIconRegistry.addSvgIconSet(trust('arrow-set.svg'));
+
+      let fixture = TestBed.createComponent(IconFromSvgName);
+
+      const testComponent = fixture.componentInstance;
+      const icon = fixture.debugElement.nativeElement.querySelector('md-icon');
+
+      testComponent.iconName = 'left-arrow';
+      fixture.detectChanges();
+
+      expect(icon.querySelector('svg')).toBeTruthy();
+
+      testComponent.iconName = undefined;
+      fixture.detectChanges();
+
+      expect(icon.querySelector('svg')).toBeFalsy();
+    });
+
   });
 
   describe('custom fonts', () => {
@@ -400,8 +437,14 @@ class IconWithCustomFontCss {
 
 @Component({template: `<md-icon [svgIcon]="iconName"></md-icon>`})
 class IconFromSvgName {
-  iconName = '';
+  iconName: string | undefined = '';
 }
 
 @Component({template: '<md-icon aria-hidden="false">face</md-icon>'})
 class IconWithAriaHiddenFalse { }
+
+@Component({template: `<md-icon [svgIcon]="iconName" *ngIf="showIcon">{{iconName}}</md-icon>`})
+class IconWithBindingAndNgIf {
+  iconName = 'fluffy';
+  showIcon = true;
+}
